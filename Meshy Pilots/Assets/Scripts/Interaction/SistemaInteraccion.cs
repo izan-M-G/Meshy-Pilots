@@ -107,15 +107,11 @@ public class SistemaInteraccion : MonoBehaviour
         dampingOriginal = rb.linearDamping;
         angularDampingOriginal = rb.angularDamping;
 
-        rb.isKinematic = false;
-        rb.useGravity = false;
-        rb.detectCollisions = true;
+       
 
         rb.linearDamping = 5f;
         rb.angularDamping = 5f;
 
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
     }
 
 
@@ -129,22 +125,13 @@ public class SistemaInteraccion : MonoBehaviour
         // Liberar el objeto de la sujecion
         objetoAgarrado = null;
 
-        // Restaurar fisica normal
-        rb.isKinematic = false;
-        rb.detectCollisions = true;
-        rb.useGravity = true;
+        
 
         // Quitar resistencia al movimiento
         rb.linearDamping = 0f;
         rb.angularDamping = 0.05f;
 
-        // Eliminar velocidad artificial de sujecion
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-
-        // Despertar Rigidbody
-        rb.WakeUp();
-
+        
         if (textoInteractuar != null)
             textoInteractuar.gameObject.SetActive(false);
 
