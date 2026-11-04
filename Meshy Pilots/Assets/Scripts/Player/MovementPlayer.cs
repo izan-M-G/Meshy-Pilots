@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,26 +12,21 @@ public class MovementPlayer : MonoBehaviour
     private float horizontalInput;
     private float forwardInput;
 
-
+    public float velocidadCorrer = 7f;
 
 
 
     //salto
-
+    [Header("Salto")]
     public float jumpForce = 5f;
-
+    public Transform groundCheck;
+    public float groundRadius = 0.2f;
+    public float groundDistance = 0.25f;
     public LayerMask groundLayer;
 
-
-
-    //deteccion de el suelo
-    public Transform groundCheck;
-    public float groundDistance = 0.2f;
-    private bool isGorunded;
-
-
-    //definicion de el rigid body
     private Rigidbody rb;
+    private bool puedeSaltar;
+    private bool saltoSolicitado;
 
     void Start()
     {
@@ -41,43 +37,94 @@ public class MovementPlayer : MonoBehaviour
     void Update()
     {
 
-
-        isGorunded = Physics.CheckSphere(groundCheck.position, groundDistance,groundLayer);
-
-
         horizontalInput = Input.GetAxis("Horizontal");
         forwardInput = Input.GetAxis("Vertical");
 
-        if (Input.GetButtonDown("Jump") && isGorunded)
+        DetectarSuelo();
+
+
+        if (Input.GetButtonDown("Jump") && puedeSaltar)
         {
-            Jump();
+            saltoSolicitado = true;
+            puedeSaltar = false;
         }
 
-        if (Input.GetKeyDown(KeyCode.LeftShift) && isGorunded)
+        if (Input.GetKeyDown(KeyCode.LeftShift) && puedeSaltar)
         {
             speed = 7f;
         }
-        if (Input.GetKeyUp(KeyCode.LeftShift) && isGorunded)
-        {
-            speed = 5.0f;
-        }
+        speed = Input.GetKey(KeyCode.LeftShift)
+            ? velocidadCorrer
+            : 5f;
 
 
     }
 
     void FixedUpdate()
     {
-        Vector3 moveDirection = transform.forward * forwardInput + transform.right * horizontalInput;
-        rb.linearVelocity = new Vector3(moveDirection.x * speed, rb.linearVelocity.y, moveDirection.z * speed);
+        Vector3 moveDirection =
+            transform.forward * forwardInput +
+            transform.right * horizontalInput;
+
+        rb.linearVelocity = new Vector3(
+            moveDirection.x * speed,
+            rb.linearVelocity.y,
+            moveDirection.z * speed
+        );
+
+        if (saltoSolicitado)
+        {
+            rb.linearVelocity = new Vector3(
+                rb.linearVelocity.x,
+                0f,
+                rb.linearVelocity.z
+            );
+
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+
+            saltoSolicitado = false;
+        }
     }
 
-    void Jump()
+    void DetectarSuelo()
     {
+        puedeSaltar = false;
 
-        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Vector3 origen = groundCheck.position + Vector3.up * 0.1f;
 
-        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        if (Physics.SphereCast(
+            origen,
+            groundRadius,
+            Vector3.down,
+            out RaycastHit hit,
+            groundDistance,
+            ~0,
+            QueryTriggerInteraction.Ignore))
+        {
+            
+
+            Transform objeto = hit.collider.transform;
+            bool esInteractuable = false;
+
+            while (objeto != null)
+            {
+                if (objeto.CompareTag("Interactuable"))
+                {
+                    esInteractuable = true;
+                    break;
+                }
+
+                objeto = objeto.parent;
+            }
+
+            puedeSaltar = !esInteractuable;
+
+        }
     }
+
+
+
+  
 
 
     private void OnDrawGizmosSelected()
