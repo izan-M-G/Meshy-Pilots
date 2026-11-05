@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentación técnica — Sistema modular del avión</title>
+<style>
+:root {
+  --bg: #f4f6fa; --paper: #fff; --ink: #202633; --muted: #5d6878;
+  --line: #dfe5ee; --accent: #2457a7; --accent-soft: #eaf1fc;
+  --code: #111827; --code-ink: #e5edf8; --note: #fff8e7;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+header {
+  background: #172b4d; color: white; padding: 54px 24px 42px;
+}
+header .inner, main { max-width: 1060px; margin: auto; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; opacity: .8; font-weight: 700; }
+h1 { font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.12; margin: 12px 0; }
+header p { max-width: 760px; color: #d8e3f4; margin: 12px 0 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.meta span { border: 1px solid #607797; border-radius: 999px; padding: 5px 12px; font-size: .82rem; }
+main { padding: 28px 20px 70px; }
+.layout { display: grid; grid-template-columns: 245px minmax(0, 1fr); gap: 26px; align-items: start; }
+nav {
+  position: sticky; top: 18px; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 14px; padding: 18px; max-height: calc(100vh - 36px); overflow: auto;
+}
+nav strong { display: block; margin-bottom: 10px; }
+nav a { display: block; text-decoration: none; color: var(--muted); padding: 5px 0; font-size: .9rem; }
+nav a:hover { color: var(--accent); }
+article { min-width: 0; }
+section {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  padding: 28px; margin-bottom: 20px; scroll-margin-top: 18px;
+}
+h2 { font-size: 1.55rem; line-height: 1.25; margin: 0 0 16px; }
+h3 { font-size: 1.12rem; margin: 24px 0 8px; }
+p { margin: 10px 0; }
+ul, ol { padding-left: 24px; }
+li { margin: 5px 0; }
+.lead { font-size: 1.08rem; color: var(--muted); }
+.callout {
+  border-left: 4px solid var(--accent); background: var(--accent-soft);
+  padding: 13px 16px; border-radius: 7px; margin: 16px 0;
+}
+.warning { border-left-color: #b7791f; background: var(--note); }
+.tree, pre {
+  overflow-x: auto; background: var(--code); color: var(--code-ink);
+  border-radius: 10px; padding: 18px; font: 13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+p code, li code, td code { background: #eef2f7; padding: 2px 5px; border-radius: 4px; color: #26364d; }
+pre code { background: transparent; padding: 0; color: inherit; }
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .94rem; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: #f5f7fa; }
+.tag { display: inline-block; background: #edf2f8; color: #34445c; border-radius: 5px; padding: 2px 7px; font-size: .82rem; }
+footer { color: var(--muted); text-align: center; padding: 24px; font-size: .88rem; }
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; max-height: none; }
+  section { padding: 21px; }
+}
+@media print {
+  body { background: white; font-size: 11pt; }
+  header { background: white; color: #111; padding: 20px 0; }
+  header p { color: #333; }
+  .meta span { border-color: #aaa; }
+  main { padding: 0; }
+  .layout { display: block; }
+  nav { display: none; }
+  section { border: 0; border-radius: 0; padding: 12px 0; break-inside: avoid; }
+  pre, .tree { white-space: pre-wrap; overflow-wrap: anywhere; print-color-adjust: exact; }
+  a { color: inherit; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="inner">
+    <div class="eyebrow">Proyecto Unity 6.3 · C#</div>
+    <h1>Sistema modular de montaje del avión</h1>
+    <p>Documentación de la jerarquía de la escena, componentes, capas, física y funcionamiento del sistema de montaje y desmontaje.</p>
+    <div class="meta">
+      <span>Estado: funcional</span><span>Versión: antes del sistema de vuelo</span><span>Documento técnico</span>
+    </div>
+  </div>
+</header>
+<main>
+<div class="layout">
+<nav>
+  <strong>Contenido</strong>
+  <a href="#objetivo">1. Objetivo y alcance</a>
+  <a href="#jerarquia">2. Jerarquía de Unity</a>
+  <a href="#puntos">3. Puntos de montaje</a>
+  <a href="#capas">4. Capas y colisiones</a>
+  <a href="#pieza">5. PiezaModular.cs</a>
+  <a href="#punto-script">6. PuntoMontaje.cs</a>
+  <a href="#sistema">7. SistemaMontaje.cs</a>
+  <a href="#flujo">8. Flujos de montaje</a>
+  <a href="#inspector">9. Configuración del Inspector</a>
+  <a href="#fisica">10. Física y Rigidbody</a>
+  <a href="#limitaciones">11. Estado y límites conocidos</a>
+  <a href="#pruebas">12. Lista de comprobación</a>
+  <a href="#siguiente">13. Próximas fases</a>
+</nav>
+<article>
+
+<section id="objetivo">
+<h2>1. Objetivo y alcance</h2>
+<p class="lead">El sistema permite recoger piezas físicas, instalarlas en soportes compatibles del avión y volver a desmontarlas.</p>
+<p>Se ha planteado como una base reutilizable: el mismo patrón de piezas, soportes y controlador podrá aplicarse en el futuro a otros vehículos o máquinas.</p>
+<h3>Funcionalidades contempladas</h3>
+<ul>
+<li>Detectar puntos de montaje delante de la cámara del jugador.</li>
+<li>Comprobar la compatibilidad entre el tipo de pieza y el soporte.</li>
+<li>Previsualizar el encaje de la pieza.</li>
+<li>Alinear la pieza con la posición y orientación del anclaje.</li>
+<li>Integrar la pieza en la jerarquía y física del avión.</li>
+<li>Desmontarla y devolverla al contenedor de piezas sueltas.</li>
+<li>Guardar y restaurar propiedades físicas de cada pieza.</li>
+</ul>
+<div class="callout warning"><strong>Alcance de esta versión:</strong> esta documentación describe el sistema de montaje que ya funciona. No incluye todavía tren de aterrizaje, suspensión, despegue, vuelo, aterrizaje ni ajuste automático de altura.</div>
+</section>
+
+<section id="jerarquia">
+<h2>2. Jerarquía de objetos en Unity</h2>
+<p>La escena separa la estructura fija del avión, los puntos de montaje y las piezas que todavía están sueltas.</p>
+<pre class="tree">Escena
+├── AvionBase
+│   ├── Fuselaje
+│   ├── ColaHorizontal
+│   ├── ColaVertical
+│   ├── PuntosMontaje
+│   │   ├── PuntoMotor
+│   │   ├── PuntoHelice
+│   │   ├── PuntoRuedaIzq
+│   │   ├── PuntoRuedaDer
+│   │   ├── PuntoAlaIzq
+│   │   ├── PuntoAlaDer
+│   │   └── PuntoMandos
+│   └── PiezasMontadas
+└── PiezasSueltas
+    ├── MotorVisual
+    ├── Helice
+    ├── RuedaIzq
+    ├── RuedaDer
+    ├── AlaIzquierda
+    ├── AlaDerecha
+    └── Piezas de mandos</pre>
+<h3>2.1 AvionBase</h3>
+<p>Es la raíz del vehículo. Contiene la estructura fija, los puntos de montaje y el contenedor de piezas instaladas. También tiene el Rigidbody principal del avión.</p>
+<p>Configuración registrada:</p>
+<table><tr><th>Propiedad del Rigidbody</th><th>Valor</th></tr>
+<tr><td>Mass</td><td>100</td></tr><tr><td>Use Gravity</td><td>Desactivado</td></tr>
+<tr><td>Is Kinematic</td><td>Activado</td></tr><tr><td>Interpolate</td><td>Activado</td></tr>
+<tr><td>Collision Detection</td><td>Continuous</td></tr></table>
+<p>Esta configuración corresponde a la fase de montaje. No debe considerarse todavía la configuración definitiva para volar.</p>
+<h3>2.2 PiezasSueltas</h3>
+<p>Es un contenedor independiente de <code>AvionBase</code>. Sus piezas no forman parte del avión: cada una conserva su propio Rigidbody y puede moverse y colisionar por separado.</p>
+<h3>2.3 PiezasMontadas</h3>
+<p>Es hijo de <code>AvionBase</code>. Cuando una pieza se instala, pasa a ser hija de este contenedor y su collider queda asociado al Rigidbody principal del avión al eliminarse el Rigidbody individual.</p>
+<div class="callout">Mantener <code>PiezasSueltas</code> fuera de <code>AvionBase</code> evita que una pieza que todavía no se ha instalado se mueva como parte del avión.</div>
+</section>
+
+<section id="puntos">
+<h2>3. Puntos de montaje</h2>
+<p>Cada soporte está dentro de <code>AvionBase/PuntosMontaje</code> y dispone de un <code>BoxCollider</code> con <strong>Is Trigger</strong> activado y del componente <code>PuntoMontaje</code>.</p>
+<table><tr><th>Objeto</th><th>Tipo aceptado</th></tr>
+<tr><td>PuntoMotor</td><td>Motor</td></tr><tr><td>PuntoHelice</td><td>Helice</td></tr>
+<tr><td>PuntoRuedaIzq</td><td>Ruedas</td></tr><tr><td>PuntoRuedaDer</td><td>Ruedas</td></tr>
+<tr><td>PuntoAlaIzq</td><td>Alas</td></tr><tr><td>PuntoAlaDer</td><td>Alas</td></tr>
+<tr><td>PuntoMandos</td><td>Mandos</td></tr></table>
+<h3>3.1 ¿Por qué un BoxCollider Trigger?</h3>
+<p>El collider define una zona de detección, no una superficie que deba bloquear físicamente la pieza. El código consulta esos triggers mediante un SphereCast con <code>QueryTriggerInteraction.Collide</code>.</p>
+<h3>3.2 El anclaje</h3>
+<p>El campo opcional <code>anclaje</code> es el Transform que define la posición y orientación final de la pieza. Si no se asigna, se utiliza el Transform del propio soporte.</p>
+<p>En una pieza, el campo opcional <code>puntoDeEncaje</code> define qué punto de la pieza debe coincidir con el anclaje del soporte. Si no se asigna, se utiliza el Transform raíz de la pieza.</p>
+</section>
+
+<section id="capas">
+<h2>4. Capas y matriz de colisiones</h2>
+<table><tr><th>Capa</th><th>Uso previsto</th></tr>
+<tr><td><span class="tag">Default</span></td><td>Piezas sueltas y objetos generales; el suelo está en esta capa según la configuración descrita.</td></tr>
+<tr><td><span class="tag">Avion</span></td><td>Estructura fija del avión.</td></tr>
+<tr><td><span class="tag">Montaje</span></td><td>Colliders Trigger de los puntos de montaje.</td></tr>
+<tr><td><span class="tag">PiezasMontadas</span></td><td>Piezas instaladas en el avión.</td></tr></table>
+<h3>4.1 Matriz de colisiones relevante</h3>
+<ul>
+<li><strong>PiezasMontadas ↔ Avion:</strong> desactivada para evitar que las piezas instaladas empujen o interfieran con la estructura fija.</li>
+<li><strong>PiezasMontadas ↔ Default:</strong> activada para permitir colisiones con el suelo y otros objetos de esa capa.</li>
+<li><strong>PiezasMontadas ↔ Montaje:</strong> debe permanecer habilitada según la configuración restaurada para que no se pierda la detección necesaria de los soportes.</li>
+</ul>
+<div class="callout warning">Cuando se cambia la capa de un objeto padre desde Unity, puede aplicarse también a sus hijos. Después de asignar <code>Avion</code> a la estructura, hay que comprobar que los puntos de montaje sigan en <code>Montaje</code>.</div>
+<p>El campo <code>capasPuntosMontaje</code> de <code>SistemaMontaje</code> debe incluir la capa <code>Montaje</code>.</p>
+</section>
+
+<section id="pieza">
+<h2>5. Script PiezaModular.cs</h2>
+<p>Este componente identifica la clase de pieza, define su punto de encaje opcional y registra si está instalada.</p>
+<pre><code>using UnityEngine;
+
+public enum TipoPieza
+{
+    Motor,
+    Helice,
+    Ruedas,
+    Alas,
+    Mandos
+}
+
+public class PiezaModular : MonoBehaviour
+{
+    [Header("Identificación")]
+    public TipoPieza tipo;
+
+    [Header("Encaje")]
+    public Transform puntoDeEncaje;
+
+    [Header("Estado")]
+    public bool estaInstalada = false;
+}</code></pre>
+<h3>5.1 TipoPieza y tipo</h3>
+<p><code>TipoPieza</code> enumera las categorías permitidas. El campo <code>tipo</code> se configura en cada pieza desde el Inspector.</p>
+<table><tr><th>Objeto</th><th>Valor de tipo</th></tr>
+<tr><td>MotorVisual</td><td>Motor</td></tr><tr><td>Helice</td><td>Helice</td></tr>
+<tr><td>RuedaIzq y RuedaDer</td><td>Ruedas</td></tr><tr><td>AlaIzquierda y AlaDerecha</td><td>Alas</td></tr>
+<tr><td>Mandos</td><td>Mandos</td></tr></table>
+<h3>5.2 puntoDeEncaje</h3>
+<p>Es opcional. Permite que el punto de referencia para alinear la pieza sea distinto de su pivote raíz. Si queda vacío, se utiliza <code>pieza.transform</code>.</p>
+<h3>5.3 estaInstalada</h3>
+<p>Es un indicador booleano. Se pone a <code>true</code> al registrar el montaje y vuelve a <code>false</code> al liberar el soporte.</p>
+</section>
+
+<section id="punto-script">
+<h2>6. Script PuntoMontaje.cs</h2>
+<p>Este componente representa un soporte individual. Sabe qué tipo acepta y qué pieza tiene instalada.</p>
+<pre><code>using UnityEngine;
+
+public class PuntoMontaje : MonoBehaviour
+{
+    [Header("Configuracion")]
+    public TipoPieza tipoAceptado;
+
+    [Header("Punto de encaje")]
+    public Transform anclaje;
+
+    [Header("Estado")]
+    public PiezaModular piezaInstalada;
+
+    public bool Ocupado
+    {
+        get { return piezaInstalada != null; }
+    }
+
+    public bool PuedeAceptar(PiezaModular pieza)
+    {
+        if (pieza == null)
+            return false;
+
+        if (Ocupado)
+            return false;
+
+        return pieza.tipo == tipoAceptado;
+    }
+
+    public void RegistrarPieza(PiezaModular pieza)
+    {
+        if (!PuedeAceptar(pieza))
+            return;
+
+        piezaInstalada = pieza;
+        pieza.estaInstalada = true;
+    }
+
+    public void LiberarPunto()
+    {
+        if (piezaInstalada == null)
+            return;
+
+        piezaInstalada.estaInstalada = false;
+        piezaInstalada = null;
+    }
+}</code></pre>
+<h3>6.1 Ocupado</h3>
+<p>Indica si el soporte ya tiene una pieza. Se considera ocupado cuando <code>piezaInstalada</code> no es <code>null</code>.</p>
+<h3>6.2 PuedeAceptar</h3>
+<p>Comprueba tres condiciones: que la pieza exista, que el soporte esté libre y que el tipo de pieza coincida con <code>tipoAceptado</code>.</p>
+<h3>6.3 RegistrarPieza</h3>
+<p>Si la pieza es válida, guarda su referencia y marca <code>estaInstalada</code> como verdadero.</p>
+<h3>6.4 LiberarPunto</h3>
+<p>Marca la pieza como no instalada y limpia la referencia del soporte.</p>
+<div class="callout warning"><strong>Nota de integración:</strong> en la versión de <code>SistemaMontaje</code> que el usuario indicó que compila, la comprobación de desmontaje utiliza <code>punto.ocupado</code> en minúsculas. El código de referencia anterior muestra una propiedad llamada <code>Ocupado</code>. C# distingue mayúsculas y minúsculas: ambos scripts deben utilizar exactamente el mismo nombre. No cambiarlo sin comprobar el código real del proyecto.</div>
+</section>
+
+<section id="sistema">
+<h2>7. Script SistemaMontaje.cs</h2>
+<p>Es el controlador central. Detecta soportes, realiza el montaje, desmonta piezas y gestiona la física individual de cada una.</p>
+<h3>7.1 Referencias y parámetros</h3>
+<ul>
+<li><code>camaraJugador</code>: cámara desde la que se lanza la detección.</li>
+<li><code>distanciaDeInteraccion</code>: distancia máxima de detección, configurada inicialmente en 4 unidades.</li>
+<li><code>capasPuntosMontaje</code>: máscara de capas que limita la detección a los soportes.</li>
+<li><code>radioDeteccionMontaje</code>: radio del SphereCast, inicialmente 0.4 unidades.</li>
+<li><code>contenedorPiezasSueltas</code>: Transform de <code>PiezasSueltas</code>.</li>
+<li><code>contenedorPiezasMontadas</code>: Transform de <code>AvionBase/PiezasMontadas</code>.</li>
+<li><code>rigidbodyAvion</code>: Rigidbody de <code>AvionBase</code>.</li>
+</ul>
+<h3>7.2 DatosFisicos</h3>
+<p>Es una clase interna que almacena los parámetros del Rigidbody original de cada pieza antes de instalarla:</p>
+<ul>
+<li>Masa.</li><li>Linear Damping y Angular Damping.</li><li>Uso de gravedad.</li><li>Estado cinemático.</li><li>Detección de colisiones.</li><li>Restricciones.</li><li>Modo de detección de colisiones.</li><li>Interpolación.</li>
+</ul>
+<p>Un diccionario relaciona cada <code>PiezaModular</code> con sus datos físicos. Así se pueden recuperar cuando se desmonta.</p>
+<h3>7.3 DetectarPuntoMontaje</h3>
+<p>Desde el centro de la cámara se genera un rayo. En lugar de un Raycast de grosor cero, se utiliza un SphereCast con radio configurable. Esto hace más fácil apuntar a colliders de montaje estrechos.</p>
+<p>La consulta:</p>
+<ul>
+<li>Parte del centro de la vista (<code>ViewportPointToRay(0.5, 0.5)</code>).</li>
+<li>Recorre hasta <code>distanciaDeInteraccion</code>.</li>
+<li>Solo consulta las capas incluidas en <code>capasPuntosMontaje</code>.</li>
+<li>Incluye colliders Trigger.</li>
+<li>Busca el componente <code>PuntoMontaje</code> en el collider o en sus padres.</li>
+</ul>
+<h3>7.4 ObtenerPuntoMontaje</h3>
+<p>Es un método público que devuelve el punto detectado. Permite que otros scripts consulten qué soporte está bajo la mira.</p>
+<h3>7.5 IntentarMontar</h3>
+<p>Recibe un Rigidbody de una pieza y un punto de montaje. El procedimiento es:</p>
+<ol>
+<li>Comprueba que ambas referencias existen.</li>
+<li>Comprueba que están asignados el Rigidbody del avión y el contenedor de piezas montadas.</li>
+<li>Obtiene <code>PiezaModular</code> desde el mismo objeto que contiene el Rigidbody.</li>
+<li>Comprueba que el soporte acepta esa pieza.</li>
+<li>Elige el punto de encaje de la pieza y el anclaje del soporte. Si no existen, utiliza los Transform raíz correspondientes.</li>
+<li>Calcula la diferencia de rotación necesaria para hacer coincidir las orientaciones.</li>
+<li>Guarda los parámetros físicos originales del Rigidbody.</li>
+<li>Detiene las velocidades lineal y angular si el Rigidbody no es cinemático.</li>
+<li>Lo convierte en cinemático y desactiva la gravedad.</li>
+<li>Aplica la rotación y corrige la posición para hacer coincidir el punto de encaje con el anclaje.</li>
+<li>Convierte la pieza en hija de <code>PiezasMontadas</code>.</li>
+<li>Asigna recursivamente la capa <code>PiezasMontadas</code>.</li>
+<li>Registra la pieza en el soporte.</li>
+<li>Destruye el Rigidbody individual.</li>
+</ol>
+<p>Al eliminar el Rigidbody individual, los colliders de la pieza pasan a formar parte del conjunto físico asociado al Rigidbody del avión, al estar la pieza dentro de su jerarquía.</p>
+<h3>7.6 IntentarDesmontar</h3>
+<p>Este método detecta el soporte que está bajo la mira y comprueba que esté ocupado.</p>
+<ol>
+<li>Obtiene la pieza registrada en el soporte.</li>
+<li>Comprueba que existe el contenedor de piezas sueltas.</li>
+<li>Busca los datos físicos que se guardaron durante el montaje.</li>
+<li>Libera el punto de montaje.</li>
+<li>Devuelve la pieza a <code>PiezasSueltas</code>, conservando su posición mundial.</li>
+<li>Asigna recursivamente la capa <code>Default</code>.</li>
+<li>Añade un Rigidbody nuevo al objeto raíz.</li>
+<li>Restaura los parámetros físicos guardados.</li>
+<li>Reinicia las velocidades si el nuevo Rigidbody no es cinemático.</li>
+<li>Elimina la entrada del diccionario.</li>
+</ol>
+<h3>7.7 PrevisualizarMontaje</h3>
+<p>Comprueba que la pieza puede entrar en el soporte y aplica la misma alineación de rotación y posición que utiliza el montaje definitivo. Devuelve <code>true</code> si puede realizar la operación.</p>
+<p>Este método mueve la pieza real; no crea por sí solo una copia fantasma o un material translúcido. El comportamiento visual de la previsualización depende de cómo lo invoque el script que gestiona la interacción.</p>
+<h3>7.8 AsignarCapaRecursiva</h3>
+<p>Cambia la capa del objeto raíz y de todos sus hijos. Si el número de capa es inválido, muestra un error en la consola.</p>
+</section>
+
+<section id="flujo">
+<h2>8. Flujo completo de montaje y desmontaje</h2>
+<h3>8.1 Montaje</h3>
+<pre class="tree">Pieza suelta con Rigidbody
+        │
+        ▼
+Jugador apunta a un soporte
+        │
+        ▼
+SphereCast detecta PuntoMontaje
+        │
+        ▼
+¿El tipo coincide y el soporte está libre?
+        │
+   ┌────┴────┐
+   No        Sí
+   │          │
+No montar    Calcular alineación
+              │
+              ▼
+       Guardar física original
+              │
+              ▼
+       Detener y hacer cinemática
+              │
+              ▼
+       Alinear con el anclaje
+              │
+              ▼
+       Mover a PiezasMontadas
+              │
+              ▼
+       Cambiar capa recursivamente
+              │
+              ▼
+       Registrar pieza y quitar Rigidbody</pre>
+<h3>8.2 Desmontaje</h3>
+<pre class="tree">Jugador apunta a un soporte ocupado
+        │
+        ▼
+Obtener pieza instalada
+        │
+        ▼
+Recuperar datos físicos guardados
+        │
+        ▼
+Liberar el soporte
+        │
+        ▼
+Mover a PiezasSueltas
+        │
+        ▼
+Restaurar capa Default
+        │
+        ▼
+Crear Rigidbody individual
+        │
+        ▼
+Restaurar propiedades físicas
+        │
+        ▼
+Eliminar datos guardados</pre>
+<p>La tecla F no se procesa directamente en estos tres scripts mostrados: el script de interacción del jugador debe llamar a los métodos correspondientes cuando se pulsa F. La recogida de piezas sueltas también depende de ese controlador externo.</p>
+</section>
+
+<section id="inspector">
+<h2>9. Configuración del Inspector</h2>
+<h3>9.1 En cada pieza suelta</h3>
+<ul>
+<li>El objeto raíz tiene un Collider.</li>
+<li>El objeto raíz tiene un Rigidbody.</li>
+<li>El objeto raíz tiene <code>PiezaModular</code>.</li>
+<li>El tag utilizado para identificar piezas recogibles es <code>Interactuable</code>.</li>
+<li>El campo <code>tipo</code> coincide con la pieza.</li>
+<li><code>puntoDeEncaje</code> puede quedar vacío si se utiliza el pivote raíz.</li>
+</ul>
+<h3>9.2 En cada punto de montaje</h3>
+<ul>
+<li>Contiene un BoxCollider con <code>Is Trigger</code> activado.</li>
+<li>Está en la capa <code>Montaje</code>.</li>
+<li>Contiene el componente <code>PuntoMontaje</code>.</li>
+<li><code>tipoAceptado</code> coincide con la pieza prevista.</li>
+<li><code>anclaje</code> es opcional.</li>
+<li><code>piezaInstalada</code> comienza vacío.</li>
+</ul>
+<h3>9.3 En SistemaMontaje</h3>
+<p>Asignar en el Inspector:</p>
+<table><tr><th>Campo</th><th>Referencia</th></tr>
+<tr><td>Camara Jugador</td><td>Cámara del jugador</td></tr>
+<tr><td>Capas Puntos Montaje</td><td>Incluir <code>Montaje</code></td></tr>
+<tr><td>Contenedor Piezas Sueltas</td><td>Objeto <code>PiezasSueltas</code></td></tr>
+<tr><td>Contenedor Piezas Montadas</td><td>Objeto <code>PiezasMontadas</code></td></tr>
+<tr><td>Rigidbody Avion</td><td>Rigidbody de <code>AvionBase</code></td></tr></table>
+</section>
+
+<section id="fisica">
+<h2>10. Decisiones físicas y funcionamiento de Rigidbody</h2>
+<h3>10.1 Mientras una pieza está suelta</h3>
+<p>La pieza tiene su Rigidbody individual. Sus propiedades determinan cómo cae, se mueve y colisiona.</p>
+<h3>10.2 Mientras está montada</h3>
+<p>La pieza se vuelve hija de <code>PiezasMontadas</code>, se le elimina el Rigidbody individual y sus colliders pasan a formar parte del Rigidbody raíz del avión. La capa cambia a <code>PiezasMontadas</code>.</p>
+<h3>10.3 Al desmontarla</h3>
+<p>Se añade un Rigidbody nuevo y se restauran los parámetros almacenados. El objeto vuelve al contenedor de piezas sueltas y a la capa <code>Default</code>.</p>
+<div class="callout warning"><strong>Detalle técnico:</strong> Unity ejecuta <code>Destroy(rb)</code> al final del frame. Por tanto, la eliminación del Rigidbody no es instantánea en la misma línea de código. La implementación actual funciona en las pruebas descritas, pero conviene tener presente este detalle si en el futuro aparece un problema de física durante el frame del montaje.</div>
+<p>El diccionario de datos físicos existe en memoria durante la ejecución. No guarda esos valores en disco ni permite reconstruirlos automáticamente después de cerrar y volver a abrir el juego.</p>
+</section>
+
+<section id="limitaciones">
+<h2>11. Estado actual y límites conocidos</h2>
+<ul>
+<li>El sistema de montaje y desmontaje se considera funcional según las pruebas del proyecto.</li>
+<li>La previsualización alinea la pieza real; no implementa por sí misma una malla fantasma.</li>
+<li>El sistema no calcula todavía la altura del avión respecto al suelo.</li>
+<li>No hay todavía tren de aterrizaje funcional ni suspensión.</li>
+<li>No hay todavía lógica de despegue, vuelo o aterrizaje.</li>
+<li>El Rigidbody principal está configurado como cinemático y sin gravedad; esto tendrá que cambiar o adaptarse para el vuelo.</li>
+<li>La compatibilidad se basa en el enum <code>TipoPieza</code>; todavía no existe un sistema de requisitos por vehículo ni dependencias entre componentes.</li>
+<li>La recogida mediante F depende de otro controlador que no está incluido en los tres scripts documentados.</li>
+</ul>
+<h3>Precaución al ampliar el sistema</h3>
+<p>La versión actual es la base funcional. Antes de modificarla, conviene conservar una copia de los scripts y probar cada cambio por separado. No se deben cambiar simultáneamente las capas, la jerarquía y la lógica física, porque sería difícil identificar la causa de una regresión.</p>
+</section>
+
+<section id="pruebas">
+<h2>12. Lista de comprobación para validar la escena</h2>
+<ul>
+<li>☐ <code>AvionBase</code> tiene un único Rigidbody principal.</li>
+<li>☐ Las piezas estructurales fijas no tienen Rigidbodies individuales adicionales.</li>
+<li>☐ <code>PiezasMontadas</code> es hijo de <code>AvionBase</code>.</li>
+<li>☐ <code>PiezasSueltas</code> está fuera de <code>AvionBase</code>.</li>
+<li>☐ Cada pieza suelta tiene Rigidbody, Collider y <code>PiezaModular</code> en el objeto raíz.</li>
+<li>☐ Cada soporte tiene BoxCollider Trigger y <code>PuntoMontaje</code>.</li>
+<li>☐ Los soportes están en la capa <code>Montaje</code>.</li>
+<li>☐ La máscara <code>capasPuntosMontaje</code> incluye <code>Montaje</code>.</li>
+<li>☐ Los tipos de piezas y soportes coinciden.</li>
+<li>☐ Las referencias del Inspector de <code>SistemaMontaje</code> están asignadas.</li>
+<li>☐ La matriz de colisiones conserva las relaciones descritas.</li>
+<li>☐ Se prueba montar una pieza compatible.</li>
+<li>☐ Se prueba que una pieza incompatible no se monte.</li>
+<li>☐ Se prueba que un soporte ocupado no acepte otra pieza.</li>
+<li>☐ Se prueba desmontar y comprobar que la pieza recupera su física.</li>
+</ul>
+</section>
+
+<section id="siguiente">
+<h2>13. Próximas fases del proyecto</h2>
+<p>Estas funciones todavía no están implementadas. Se enumeran para dejar claro cómo evolucionará el proyecto sin confundirlas con el estado actual.</p>
+<ol>
+<li><strong>Tren de aterrizaje:</strong> definir puntos de contacto con el suelo y el comportamiento cuando falten ruedas.</li>
+<li><strong>Altura en tierra:</strong> ajustar la posición inicial del avión para que las ruedas apoyen correctamente, sin imponer ese ajuste durante el vuelo.</li>
+<li><strong>Física de vuelo:</strong> revisar el Rigidbody principal, gravedad, fuerzas, torque y controles.</li>
+<li><strong>Despegue y aterrizaje:</strong> permitir que el avión abandone el suelo y vuelva a contactar con él mediante física.</li>
+<li><strong>Requisitos de componentes:</strong> impedir o limitar funciones cuando falten motor, hélice, alas, mandos o ruedas.</li>
+<li><strong>Generalización:</strong> separar configuración del vehículo y tipos de soportes para reutilizar el sistema en otras máquinas.</li>
+</ol>
+<div class="callout"><strong>Principio de desarrollo:</strong> mantener intacto el montaje que ya funciona y añadir cada sistema nuevo de forma independiente, con pruebas pequeñas después de cada modificación.</div>
+</section>
+
+</article>
+</div>
+</main>
+<footer>Documentación del proyecto · Unity 6.3 · Sistema modular del avión</footer>
+</body>
+</html>
