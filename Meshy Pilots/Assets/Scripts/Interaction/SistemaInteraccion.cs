@@ -26,6 +26,8 @@ public class SistemaInteraccion : MonoBehaviour
     public PuntoMontaje1 montajeClass;
     public Rigidbody objetoAgarrado;
 
+    public bool mirandoMontada;
+
     private bool detectCollisionsOriginal;
     private float dampingOriginal;
     private float angularDampingOriginal;
@@ -118,13 +120,7 @@ public class SistemaInteraccion : MonoBehaviour
     {
         esconderTodosTextos();
 
-        if (montajeClass != null &&
-            montajeClass.triggerDesmontajePieza != null &&
-            montajeClass.triggerDesmontajePieza.playerInRangePoint1 &&
-            montajeClass.piezaInstalada != null)
-        {
-            mostrarTexto(desmontarText);
-        }
+        
 
         if (objetoAgarrado != null)
         {
@@ -150,6 +146,7 @@ public class SistemaInteraccion : MonoBehaviour
             else
             {
                 esconderTodosTextos();
+
 
             }
 
@@ -180,31 +177,55 @@ public class SistemaInteraccion : MonoBehaviour
 
             if (rb != null && rb.CompareTag("Interactuable") )
             {
-                if (!rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
+                if (rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
                 {
+
+                    mirandoMontada = true;
+
+                    esconderTexto(textoInteractuar);
+
+                    esconderTexto(textoInteractuarSoltar);
+
+                    mostrarTexto(desmontarText);
+
+                    
+
+                }
+                else
+                {
+                    mirandoMontada = false;
 
                     esconderTexto(montarText);
 
                     esconderTexto(textoInteractuarSoltar);
 
                     mostrarTexto(textoInteractuar);
+
+                    if (Input.GetKeyDown(KeyCode.F) && !rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
+                        AgarrarObjeto(rb);
+
+
                 }
 
-                
-
-               
-
-
-                if (Input.GetKeyDown(KeyCode.F) && !rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
-                    AgarrarObjeto(rb);
             }
-        
+            else
+            {
+                mirandoMontada = false;
 
-           
+            }
+
+
+
+
+
+        }
+        else
+        {
+            mirandoMontada = false;
 
         }
 
-        
+
 
     }
 

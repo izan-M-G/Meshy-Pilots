@@ -248,7 +248,6 @@ GameObject:
   - component: {fileID: 72772866}
   - component: {fileID: 72772867}
   - component: {fileID: 72772868}
-  - component: {fileID: 72772869}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -482,18 +481,7 @@ MonoBehaviour:
   velocidadMaxima: 10
   montajeClass: {fileID: 803411342}
   objetoAgarrado: {fileID: 0}
---- !u!114 &72772869
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 72772859}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5d7da08cefce8d14fa9f32498479ad5d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerTrigger
+  mirandoMontada: 0
 --- !u!1 &89921986
 GameObject:
   m_ObjectHideFlags: 0
@@ -1292,7 +1280,6 @@ MonoBehaviour:
   piezaInstalada: {fileID: 0}
   inTrigger: 0
   sistemaInteraccion: {fileID: 72772868}
-  triggerDesmontajePieza: {fileID: 1098380681}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -1821,74 +1808,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!1 &1098380678
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1098380679}
-  - component: {fileID: 1098380680}
-  - component: {fileID: 1098380681}
-  m_Layer: 0
-  m_Name: TriggerPersonaje
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1098380679
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1098380678}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.662, z: -1.81}
-  m_LocalScale: {x: 1, y: 0.21926, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1286887522}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1098380680
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1098380678}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1098380681
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1098380678}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2c3557491eecb8f4c978f7d08473a948, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TriggerDesmontajePieza
-  playerInRangePoint1: 0
-  playerTrigger: {fileID: 72772869}
 --- !u!1 &1286887517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2029,7 +1948,6 @@ Transform:
   m_Children:
   - {fileID: 803411339}
   - {fileID: 1679010572}
-  - {fileID: 1098380679}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1347642845

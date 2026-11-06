@@ -21,7 +21,6 @@ public class PuntoMontaje1 : MonoBehaviour
 
     public SistemaInteraccion sistemaInteraccion;
 
-    public TriggerDesmontajePieza triggerDesmontajePieza;
 
     private void OnTriggerEnter(Collider other)
     {
@@ -74,7 +73,6 @@ public class PuntoMontaje1 : MonoBehaviour
     {
 
         sistemaInteraccion = sistemaInteraccion.GetComponent<SistemaInteraccion>();
-        triggerDesmontajePieza = triggerDesmontajePieza.GetComponent<TriggerDesmontajePieza>();
 
 
 
@@ -84,12 +82,12 @@ public class PuntoMontaje1 : MonoBehaviour
     void Update()
     {
 
-        
+        Debug.Log(sistemaInteraccion.mirandoMontada);
 
         if (!Input.GetKeyDown(KeyCode.G)) return;
 
 
-        if(piezaInstalada != null)
+        if(piezaInstalada != null && sistemaInteraccion.mirandoMontada)
         {
             
             DesmontarPieza();
@@ -149,18 +147,7 @@ public class PuntoMontaje1 : MonoBehaviour
     {
 
 
-      
 
-        if (triggerDesmontajePieza == null ||
-            !triggerDesmontajePieza.playerInRangePoint1)
-        {
-            return;
-        }
-
-
-
-        if (triggerDesmontajePieza.playerInRangePoint1)
-        {
             if (piezaInstalada == null)
             {
                 return;
@@ -183,11 +170,6 @@ public class PuntoMontaje1 : MonoBehaviour
 
             pieza.estaMontada = false;
             piezaInstalada = null;
-
-
-
-        }
-
 
 
     }
