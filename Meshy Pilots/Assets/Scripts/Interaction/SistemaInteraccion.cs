@@ -12,24 +12,32 @@ public class SistemaInteraccion : MonoBehaviour
     [Header("Interfaz")]
     public TextMeshProUGUI textoInteractuar;
 
+    public TextMeshProUGUI textoInteractuarSoltar;
+
+    public TextMeshProUGUI montarText;
+
+    public TextMeshProUGUI desmontarText;
+
     [Header("Sujecion")]
     public Transform puntoDeSujecion;
     public float velocidadAtraccion = 12f;
     public float velocidadMaxima = 10f;
 
-    [Header("Sistema de montaje")]
-    public SistemaMontaje sistemaMontaje;
+    public PuntoMontaje1 montajeClass;
+    public Rigidbody objetoAgarrado;
 
-    private Rigidbody objetoAgarrado;
-    private bool previsualizando = false;
-
+    private bool detectCollisionsOriginal;
     private float dampingOriginal;
     private float angularDampingOriginal;
-    private bool gravedadOriginal;
+
+
+
 
 
     void Start()
     {
+
+
         if (camaraJugador == null)
             camaraJugador = Camera.main;
 
@@ -39,8 +47,25 @@ public class SistemaInteraccion : MonoBehaviour
             return;
         }
 
+        if (montajeClass == null)
+        {
+            montajeClass = FindFirstObjectByType<PuntoMontaje1>();
+        }
+
         if (textoInteractuar != null)
             textoInteractuar.gameObject.SetActive(false);
+
+        if (montarText != null) 
+            montarText.gameObject.SetActive(false);
+
+        if(textoInteractuarSoltar != null) 
+            textoInteractuarSoltar.gameObject.SetActive(false);
+
+        if(desmontarText != null)
+        {
+            desmontarText.gameObject.SetActive(false);
+        }
+
 
         if (puntoDeSujecion == null)
         {
@@ -53,153 +78,141 @@ public class SistemaInteraccion : MonoBehaviour
     }
 
 
+    void esconderTodosTextos()
+    {
+        if (textoInteractuarSoltar != null)
+        {
+            textoInteractuarSoltar.gameObject.SetActive(false);
+        }
+
+        if (montarText != null)
+        {
+            montarText.gameObject.SetActive(false);
+        }
+        if (textoInteractuar != null)
+        {
+            textoInteractuar.gameObject.SetActive(false);
+        }
+        if (desmontarText != null)
+            desmontarText.gameObject.SetActive (false);
+    }
+
+    public void mostrarTexto(TextMeshProUGUI texto)
+    {
+        if (texto != null)
+        {
+            texto.gameObject.SetActive(true);
+        }
+
+    }
+
+    public void esconderTexto(TextMeshProUGUI texto)
+    {
+        if (texto != null)
+        {
+            texto.gameObject.SetActive(false);
+        }
+    }
+
     void Update()
     {
-        // CASO 1: Llevamos una pieza
+        esconderTodosTextos();
+
+        if (montajeClass != null &&
+            montajeClass.triggerDesmontajePieza != null &&
+            montajeClass.triggerDesmontajePieza.playerInRangePoint1 &&
+            montajeClass.piezaInstalada != null)
+        {
+            mostrarTexto(desmontarText);
+        }
+
         if (objetoAgarrado != null)
         {
-            PuntoMontaje punto = null;
 
-            if (sistemaMontaje != null)
-                punto = sistemaMontaje.ObtenerPuntoMontaje();
+            esconderTexto(montarText);
+            esconderTexto(textoInteractuar);
 
-            PiezaModular pieza =
-                objetoAgarrado.GetComponent<PiezaModular>();
+            mostrarTexto(textoInteractuarSoltar);
 
-            bool puedeColocar = false;
-
-            if (punto != null && pieza != null &&
-                punto.PuedeAceptar(pieza))
+            if (montajeClass != null && montajeClass.inTrigger)
             {
-                if (!previsualizando)
+                if (montarText != null)
                 {
-                    if (!objetoAgarrado.isKinematic)
-                    {
-                        objetoAgarrado.linearVelocity = Vector3.zero;
-                        objetoAgarrado.angularVelocity = Vector3.zero;
-                    }
-
-                    objetoAgarrado.isKinematic = true;
-                    objetoAgarrado.useGravity = false;
+                    montarText.gameObject.SetActive(true);
+                    Debug.Log("Texto activar: " + montarText.gameObject.activeSelf);
+                }
+                else
+                {
+                    Debug.LogError("montarText NO está asignado");
                 }
 
-                puedeColocar = sistemaMontaje.PrevisualizarMontaje(
-                    objetoAgarrado, punto);
-
-                previsualizando = puedeColocar;
-
-                if (puedeColocar)
-                    MostrarTexto("F - Colocar pieza");
-                else
-                    MostrarTexto("F - Soltar pieza");
+                esconderTexto(textoInteractuar);
+                esconderTexto(textoInteractuarSoltar);
             }
             else
             {
-                if (previsualizando)
-                {
-                    objetoAgarrado.isKinematic = false;
-                    objetoAgarrado.useGravity = gravedadOriginal;
+                esconderTodosTextos();
 
-                    objetoAgarrado.linearVelocity = Vector3.zero;
-                    objetoAgarrado.angularVelocity = Vector3.zero;
-
-                    previsualizando = false;
-                }
-
-                if (punto != null)
-                    MostrarTexto("Soporte incompatible");
-                else
-                    MostrarTexto("F - Soltar pieza");
             }
 
-            // Instalar o soltar
+
+
+
             if (Input.GetKeyDown(KeyCode.F))
             {
-                if (puedeColocar)
-                {
-                    bool instalada =
-                        sistemaMontaje.IntentarMontar(
-                            objetoAgarrado, punto);
+                PiezaMontaje1 pieza = objetoAgarrado.GetComponentInParent<PiezaMontaje1>();
 
-                    if (instalada)
-                    {
-                        objetoAgarrado = null;
-                        previsualizando = false;
-                        OcultarTexto();
-                    }
-                    else
-                    {
-                        SoltarObjeto();
-                    }
-                }
-                else
+                if (pieza == null || !pieza.estaMontada)
                 {
                     SoltarObjeto();
                 }
+                SoltarObjeto();
             }
 
             return;
         }
-
-
-        // CASO 2: No llevamos ninguna pieza
 
         Ray ray = camaraJugador.ViewportPointToRay(
             new Vector3(0.5f, 0.5f, 0));
 
-        if (Physics.Raycast(
-            ray,
-            out RaycastHit hit,
-            distanciaDeInteraccion,
-            capasParaRaycast,
-            QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(ray, out RaycastHit hit,
+            distanciaDeInteraccion, capasParaRaycast))
         {
-            PiezaModular pieza =
-                hit.collider.GetComponentInParent<PiezaModular>();
+            Rigidbody rb = hit.collider.GetComponentInParent<Rigidbody>();
 
-            // Pieza instalada
-            if (pieza != null && pieza.estaInstalada)
+            if (rb != null && rb.CompareTag("Interactuable") )
             {
-                MostrarTexto("F - Desmontar pieza");
-
-                if (Input.GetKeyDown(KeyCode.F))
+                if (!rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
                 {
-                    if (sistemaMontaje != null)
-                        sistemaMontaje.IntentarDesmontar();
+
+                    esconderTexto(montarText);
+
+                    esconderTexto(textoInteractuarSoltar);
+
+                    mostrarTexto(textoInteractuar);
                 }
 
-                return;
-            }
+                
 
-            // Pieza suelta
-            Rigidbody rb =
-                hit.collider.GetComponentInParent<Rigidbody>();
+               
 
-            if (rb != null && rb.CompareTag("Interactuable"))
-            {
-                MostrarTexto("F - Recoger pieza");
 
-                if (Input.GetKeyDown(KeyCode.F))
+                if (Input.GetKeyDown(KeyCode.F) && !rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
                     AgarrarObjeto(rb);
             }
-            else
-            {
-                OcultarTexto();
-            }
-        }
-        else
-        {
-            OcultarTexto();
-        }
-    }
+        
 
+           
+
+        }
+
+        
+
+    }
 
     void FixedUpdate()
     {
         if (objetoAgarrado == null)
-            return;
-
-        if (previsualizando || objetoAgarrado.isKinematic)
             return;
 
         Vector3 direccion =
@@ -212,63 +225,52 @@ public class SistemaInteraccion : MonoBehaviour
             Vector3.ClampMagnitude(velocidad, velocidadMaxima);
     }
 
-
-    void AgarrarObjeto(Rigidbody rb)
+    public void AgarrarObjeto(Rigidbody rb)
     {
-        objetoAgarrado = rb;
+       
+            esconderTexto(textoInteractuar);
+            mostrarTexto(textoInteractuarSoltar);
 
-        previsualizando = false;
+            objetoAgarrado = rb;
 
-        dampingOriginal = rb.linearDamping;
-        angularDampingOriginal = rb.angularDamping;
-        gravedadOriginal = rb.useGravity;
+            detectCollisionsOriginal = rb.detectCollisions;
+            dampingOriginal = rb.linearDamping;
+            angularDampingOriginal = rb.angularDamping;
 
-        rb.isKinematic = false;
-        rb.useGravity = false;
 
-        rb.linearDamping = 5f;
-        rb.angularDamping = 5f;
+
+
+            rb.linearDamping = 5f;
+            rb.angularDamping = 5f;
+        
+
     }
 
 
-    void SoltarObjeto()
+    public void SoltarObjeto()
     {
         if (objetoAgarrado == null)
             return;
 
         Rigidbody rb = objetoAgarrado;
 
+        // Liberar el objeto de la sujecion
         objetoAgarrado = null;
-        previsualizando = false;
 
-        rb.isKinematic = false;
-        rb.useGravity = true;
 
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
 
-        rb.linearDamping = dampingOriginal;
-        rb.angularDamping = angularDampingOriginal;
+        // Quitar resistencia al movimiento
+        rb.linearDamping = 0f;
+        rb.angularDamping = 0.05f;
 
-        OcultarTexto();
+
+        esconderTodosTextos();
+
     }
 
 
-    void MostrarTexto(string mensaje)
-    {
-        if (textoInteractuar != null)
-        {
-            textoInteractuar.text = mensaje;
-            textoInteractuar.gameObject.SetActive(true);
-        }
-    }
+    
 
-
-    void OcultarTexto()
-    {
-        if (textoInteractuar != null)
-            textoInteractuar.gameObject.SetActive(false);
-    }
 
 
     void OnDisable()
@@ -276,4 +278,13 @@ public class SistemaInteraccion : MonoBehaviour
         if (objetoAgarrado != null)
             SoltarObjeto();
     }
+
+    public Rigidbody ObjetoAgarrado
+    {
+        get { return objetoAgarrado; }
+    }
+
+   
+
+   
 }
