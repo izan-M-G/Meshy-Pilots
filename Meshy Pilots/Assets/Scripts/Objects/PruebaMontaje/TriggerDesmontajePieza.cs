@@ -16,7 +16,6 @@ public class TriggerDesmontajePieza : MonoBehaviour
         playerTrigger = jugador;
         playerInRangePoint1 = true;
 
-        Debug.Log("Jugador ENTRA en rango");
     }
 
     private void OnTriggerExit(Collider other)
@@ -29,6 +28,5 @@ public class TriggerDesmontajePieza : MonoBehaviour
         playerInRangePoint1 = false;
         playerTrigger = null;
 
-        Debug.Log("Jugador SALE del rango");
     }
 }

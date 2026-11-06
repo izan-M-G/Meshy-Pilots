@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentación técnica — Sistema de montaje e interacción en Unity</title>
+<style>
+:root{--bg:#f4f6fa;--paper:#fff;--ink:#202938;--muted:#586579;--line:#dce2eb;--blue:#2457a7;--bluebg:#edf4ff;--orange:#8a4b08;--orangebg:#fff4e5;--green:#17633d;--greenbg:#eaf8f0;--code:#172033}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{background:#172b4d;color:#fff;padding:42px 22px}
+header .wrap,main{max-width:1100px;margin:auto}
+header h1{font-size:clamp(2rem,4vw,3rem);line-height:1.12;margin:0 0 14px}
+header p{max-width:850px;color:#dbe7fa;margin:0}
+main{padding:28px 18px 70px}
+nav,.panel,section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 20px;box-shadow:0 3px 12px #172b4d0a}
+nav ul{columns:2;margin:8px 0 0;padding-left:20px}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+h2{font-size:1.65rem;margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+h3{font-size:1.18rem;margin:24px 0 8px}
+h4{margin:18px 0 6px}
+p{margin:8px 0 13px}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#eef1f6;padding:2px 5px;border-radius:5px;font-size:.92em}
+pre{overflow:auto;background:var(--code);color:#e8eefb;padding:18px;border-radius:10px;line-height:1.5;font-size:.88rem}
+pre code{background:none;padding:0;color:inherit}
+table{width:100%;border-collapse:collapse;margin:12px 0 18px;font-size:.94rem}
+th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+th{background:#f0f4fa}
+.callout{padding:14px 16px;border-radius:9px;margin:14px 0;background:var(--bluebg);border-left:4px solid var(--blue)}
+.warn{background:var(--orangebg);border-left-color:#c47a18}
+.good{background:var(--greenbg);border-left-color:#278052}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;background:#edf1f7;color:#34445c;font-size:.8rem;font-weight:650}
+.small{color:var(--muted);font-size:.92rem}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}
+.flow div{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fafbfd}
+.flow strong{display:block;color:var(--blue);margin-bottom:4px}
+footer{max-width:1100px;margin:auto;padding:0 18px 35px;color:var(--muted);font-size:.9rem}
+@media(max-width:650px){nav ul{columns:1}section,.panel,nav{padding:17px}header{padding:32px 18px}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<h1>Documentación técnica</h1>
+<p>Sistema modular sencillo de interacción, montaje y desmontaje de piezas en Unity 6.3 con C#. Explica los cuatro scripts proporcionados, sus responsabilidades, el flujo de ejecución, las referencias de Inspector, los eventos de física y las limitaciones que conviene tener presentes.</p>
+</div>
+</header>
+<main>
+<nav>
+<strong>Contenido</strong>
+<ul>
+<li><a href="#vision">1. Visión general</a></li>
+<li><a href="#arquitectura">2. Arquitectura y jerarquía</a></li>
+<li><a href="#trigger">3. TriggerDesmontajePieza</a></li>
+<li><a href="#punto">4. PuntoMontaje1</a></li>
+<li><a href="#interaccion">5. SistemaInteraccion</a></li>
+<li><a href="#pieza">6. PiezaMontaje1</a></li>
+<li><a href="#flujo">7. Flujo completo</a></li>
+<li><a href="#inspector">8. Configuración en Unity</a></li>
+<li><a href="#fisica">9. Física y colliders</a></li>
+<li><a href="#avisos">10. Observaciones del código actual</a></li>
+<li><a href="#pruebas">11. Pruebas recomendadas</a></li>
+<li><a href="#glosario">12. Glosario</a></li>
+</ul>
+</nav>
+
+<section id="vision">
+<h2>1. Visión general</h2>
+<p>El sistema permite que el jugador mire un objeto compatible, lo recoja con <strong>F</strong>, lo transporte mediante una fuerza de atracción hacia un punto situado delante de la cámara y lo instale en un punto de montaje con <strong>G</strong>. Una vez instalada, la pieza queda acoplada a la estructura y deja de responder a la gravedad. Para desmontarla, el jugador debe entrar en un segundo volumen Trigger, destinado específicamente a autorizar el desmontaje, y pulsar <strong>G</strong>.</p>
+<div class="flow">
+<div><strong>Detectar</strong>Raycast identifica una pieza que el jugador mira.</div>
+<div><strong>Recoger</strong>F asigna su Rigidbody a <code>objetoAgarrado</code>.</div>
+<div><strong>Transportar</strong>FixedUpdate mueve el Rigidbody hacia <code>puntoDeSujecion</code>.</div>
+<div><strong>Montar</strong>G coloca la pieza en el anclaje y la hace cinemática.</div>
+<div><strong>Autorizar desmontaje</strong>El jugador entra en el Trigger de desmontaje.</div>
+<div><strong>Desmontar</strong>G separa la pieza y reactiva gravedad y física.</div>
+</div>
+<div class="callout good"><strong>Idea principal:</strong> hay dos Triggers con funciones distintas. El Trigger de <code>PuntoMontaje1</code> detecta una pieza que se puede instalar. El Trigger de <code>TriggerDesmontajePieza</code> detecta al jugador y permite desmontar una pieza ya instalada.</div>
+</section>
+
+<section id="arquitectura">
+<h2>2. Arquitectura y jerarquía</h2>
+<p>Los cuatro scripts colaboran, pero cada uno tiene una responsabilidad concreta:</p>
+<table>
+<thead><tr><th>Script</th><th>Responsabilidad</th><th>Quién lo consulta</th></tr></thead>
+<tbody>
+<tr><td><code>TriggerDesmontajePieza</code></td><td>Registra si el jugador está dentro del área autorizada para desmontar.</td><td><code>PuntoMontaje1</code> y <code>SistemaInteraccion</code>.</td></tr>
+<tr><td><code>PuntoMontaje1</code></td><td>Detecta piezas compatibles, las instala y las desmonta al recibir G.</td><td><code>SistemaInteraccion</code> consulta sus estados.</td></tr>
+<tr><td><code>SistemaInteraccion</code></td><td>Gestiona el Raycast, la recogida, el transporte, la suelta y los textos de ayuda.</td><td>Recibe referencias a cámara y punto de montaje.</td></tr>
+<tr><td><code>PiezaMontaje1</code></td><td>Marca si una pieza está instalada.</td><td>Los otros scripts consultan <code>estaMontada</code>.</td></tr>
+</tbody>
+</table>
+<p>Una jerarquía típica puede ser:</p>
+<pre><code>Escena
+├── Estructura
+│   └── PuntoMontaje1 (Collider con Is Trigger)
+│       └── PuntoAnclaje (Transform)
+├── ZonaDesmontaje
+│   ├── Collider con Is Trigger
+│   └── TriggerDesmontajePieza
+├── Player
+│   ├── SistemaInteraccion
+│   ├── PlayerTrigger
+│   └── Cámara del jugador (o referencia a Main Camera)
+└── Esfera / Pieza
+    ├── Rigidbody
+    ├── Collider
+    └── PiezaMontaje1</code></pre>
+<div class="callout warn"><strong>La jerarquía es orientativa.</strong> Los componentes pueden estar distribuidos de otra manera. Lo importante es que las referencias estén asignadas correctamente y que los colliders y rigidbodies permitan que Unity genere los eventos Trigger.</div>
+</section>
+
+<section id="trigger">
+<h2>3. Script 1 — <code>TriggerDesmontajePieza</code></h2>
+<pre><code>using UnityEngine;
+
+public class TriggerDesmontajePieza : MonoBehaviour
+{
+    public bool playerInRangePoint1 = false;
+    public PlayerTrigger playerTrigger;
+
+    private void OnTriggerEnter(Collider other)
+    {
+        PlayerTrigger jugador = other.GetComponentInParent&lt;PlayerTrigger&gt;();
+
+        if (jugador == null)
+            return;
+
+        playerTrigger = jugador;
+        playerInRangePoint1 = true;
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        PlayerTrigger jugador = other.GetComponentInParent&lt;PlayerTrigger&gt;();
+
+        if (jugador == null)
+            return;
+
+        playerInRangePoint1 = false;
+        playerTrigger = null;
+    }
+}</code></pre>
+<h3>3.1. ¿Para qué sirve?</h3>
+<p>Este componente se coloca en el objeto que representa la zona donde el jugador puede desmontar una pieza. No instala ni desmonta nada por sí mismo. Su única tarea es comunicar si el jugador está dentro o fuera de esa zona.</p>
+<h3>3.2. Variables</h3>
+<table>
+<tr><th>Variable</th><th>Tipo</th><th>Función</th></tr>
+<tr><td><code>playerInRangePoint1</code></td><td><code>bool</code></td><td>Vale <code>false</code> inicialmente. Pasa a <code>true</code> cuando entra un collider perteneciente al jugador y vuelve a <code>false</code> cuando sale.</td></tr>
+<tr><td><code>playerTrigger</code></td><td><code>PlayerTrigger</code></td><td>Guarda la referencia al componente <code>PlayerTrigger</code> encontrado en el collider que entra. Puede servir para identificar al jugador desde otros scripts.</td></tr>
+</table>
+<h3>3.3. <code>OnTriggerEnter(Collider other)</code></h3>
+<p>Unity llama a este método cuando otro collider entra en el volumen Trigger.</p>
+<ol>
+<li><code>other</code> es el collider que acaba de entrar, no necesariamente el objeto raíz del jugador.</li>
+<li><code>GetComponentInParent&lt;PlayerTrigger&gt;()</code> busca el componente en el propio objeto del collider y después en sus padres. Esto permite que el collider esté en un objeto hijo del jugador.</li>
+<li>Si no encuentra <code>PlayerTrigger</code>, <code>jugador</code> será <code>null</code> y el método termina con <code>return</code>. Así no se considera jugador a una pieza u otro objeto cualquiera.</li>
+<li>Si lo encuentra, guarda la referencia y establece <code>playerInRangePoint1 = true</code>.</li>
+</ol>
+<h3>3.4. <code>OnTriggerExit(Collider other)</code></h3>
+<p>Unity llama a este método cuando un collider sale del volumen. Se repite la búsqueda de <code>PlayerTrigger</code>. Si no pertenece al jugador, se ignora. Si pertenece, se pone el indicador a <code>false</code> y se limpia la referencia.</p>
+<div class="callout warn"><strong>Limitación importante del código actual:</strong> si el jugador tiene varios colliders, uno puede salir mientras otro continúa dentro. Este script pondrá el indicador a <code>false</code> al salir cualquiera de ellos que tenga <code>PlayerTrigger</code>. En ese caso se necesita contar los colliders del jugador que siguen dentro, en vez de usar un único evento de salida como señal definitiva.</div>
+<h3>3.5. Requisitos de configuración</h3>
+<ul>
+<li>El objeto de la zona debe tener un Collider con <strong>Is Trigger</strong> activado.</li>
+<li>El jugador debe tener un collider que entre en la zona.</li>
+<li>El objeto del jugador o uno de sus padres debe tener el componente <code>PlayerTrigger</code>.</li>
+<li>La configuración de Rigidbody/CharacterController debe permitir que Unity genere los eventos Trigger. Las reglas dependen de los tipos de collider y cuerpo físico usados.</li>
+</ul>
+</section>
+
+<section id="punto">
+<h2>4. Script 2 — <code>PuntoMontaje1</code></h2>
+<pre><code>using Unity.VisualScripting;
+using UnityEngine;
+
+public class PuntoMontaje1 : MonoBehaviour
+{
+    public Transform puntoAnclaje;
+    public PiezaMontaje1 piezaDetectada;
+    public PiezaMontaje1 piezaInstalada;
+    public bool inTrigger;
+
+    public SistemaInteraccion sistemaInteraccion;
+    public TriggerDesmontajePieza triggerDesmontajePieza;
+
+    private void OnTriggerEnter(Collider other)
+    {
+        PiezaMontaje1 piezaMontaje1 =
+            other.GetComponentInParent&lt;PiezaMontaje1&gt;();
+
+        if (piezaMontaje1 == null)
+            return;
+
+        if (piezaMontaje1.estaMontada)
+            return;
+
+        piezaDetectada = piezaMontaje1;
+        inTrigger = true;
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        PiezaMontaje1 pieza =
+            other.GetComponentInParent&lt;PiezaMontaje1&gt;();
+
+        if (pieza == null || pieza.estaMontada)
+            return;
+
+        if (piezaDetectada == pieza)
+        {
+            piezaDetectada = null;
+            inTrigger = false;
+        }
+    }
+
+    void Start()
+    {
+        sistemaInteraccion =
+            sistemaInteraccion.GetComponent&lt;SistemaInteraccion&gt;();
+
+        triggerDesmontajePieza =
+            triggerDesmontajePieza.GetComponent&lt;TriggerDesmontajePieza&gt;();
+    }
+
+    void Update()
+    {
+        if (!Input.GetKeyDown(KeyCode.G))
+            return;
+
+        if (piezaInstalada != null)
+            DesmontarPieza();
+
+        if (piezaDetectada != null)
+        {
+            MontarPieza();
+            sistemaInteraccion.SoltarObjeto();
+        }
+    }
+
+    public void MontarPieza()
+    {
+        if (puntoAnclaje == null)
+            return;
+
+        PiezaMontaje1 piezaMontaje1 = piezaDetectada;
+        Rigidbody rb =
+            piezaDetectada.GetComponentInParent&lt;Rigidbody&gt;();
+
+        piezaMontaje1.transform.SetPositionAndRotation(
+            puntoAnclaje.position, puntoAnclaje.rotation);
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
+        piezaMontaje1.transform.SetParent(transform, true);
+        piezaMontaje1.estaMontada = true;
+        piezaInstalada = piezaMontaje1;
+        piezaDetectada = null;
+    }
+
+    public void DesmontarPieza()
+    {
+        if (triggerDesmontajePieza == null ||
+            !triggerDesmontajePieza.playerInRangePoint1)
+            return;
+
+        if (triggerDesmontajePieza.playerInRangePoint1)
+        {
+            if (piezaInstalada == null)
+                return;
+
+            PiezaMontaje1 pieza = piezaInstalada;
+            pieza.transform.SetParent(null, true);
+
+            Rigidbody rb =
+                pieza.GetComponentInParent&lt;Rigidbody&gt;();
+
+            if (rb != null)
+            {
+                rb.detectCollisions = true;
+                rb.isKinematic = false;
+                rb.useGravity = true;
+            }
+
+            pieza.estaMontada = false;
+            piezaInstalada = null;
+        }
+    }
+}</code></pre>
+<h3>4.1. ¿Para qué sirve?</h3>
+<p>Es el controlador del punto de montaje. Detecta una pieza compatible que entra en su zona, conserva una referencia a ella y responde a la tecla G para instalarla. También conserva la referencia de la pieza instalada y permite desmontarla cuando el jugador está dentro de la zona de desmontaje.</p>
+<h3>4.2. Variables públicas</h3>
+<table>
+<tr><th>Variable</th><th>Tipo</th><th>Función</th></tr>
+<tr><td><code>puntoAnclaje</code></td><td><code>Transform</code></td><td>Transform que define la posición y rotación exactas donde debe quedar la pieza instalada.</td></tr>
+<tr><td><code>piezaDetectada</code></td><td><code>PiezaMontaje1</code></td><td>Referencia a la pieza compatible que ha entrado en el Trigger de montaje y todavía no está instalada.</td></tr>
+<tr><td><code>piezaInstalada</code></td><td><code>PiezaMontaje1</code></td><td>Referencia a la pieza que actualmente ocupa el punto de montaje. Si vale <code>null</code>, el punto no tiene pieza registrada.</td></tr>
+<tr><td><code>inTrigger</code></td><td><code>bool</code></td><td>Indica que una pieza compatible ha sido detectada por el Trigger de montaje. Se usa en la interfaz para mostrar el texto de montar cuando el jugador sostiene una pieza.</td></tr>
+<tr><td><code>sistemaInteraccion</code></td><td><code>SistemaInteraccion</code></td><td>Referencia al controlador que gestiona la pieza agarrada. Después de montar, se llama a <code>SoltarObjeto()</code>.</td></tr>
+<tr><td><code>triggerDesmontajePieza</code></td><td><code>TriggerDesmontajePieza</code></td><td>Referencia al detector de proximidad del jugador. Su booleano autoriza o bloquea el desmontaje.</td></tr>
+</table>
+<h3>4.3. Detección de piezas: <code>OnTriggerEnter</code> y <code>OnTriggerExit</code></h3>
+<p><code>OnTriggerEnter</code> busca <code>PiezaMontaje1</code> en el collider que entra o en sus padres. Si no encuentra el componente, ignora el objeto. Si la pieza ya está montada, también la ignora. En caso contrario, guarda la pieza en <code>piezaDetectada</code> y activa <code>inTrigger</code>.</p>
+<p><code>OnTriggerExit</code> busca de nuevo la pieza. Si la pieza que sale es la que estaba registrada como detectada y aún no está montada, limpia la referencia y desactiva <code>inTrigger</code>. La comparación <code>piezaDetectada == pieza</code> evita borrar la referencia por la salida de una pieza distinta.</p>
+<div class="callout warn"><strong>Una sola pieza detectada:</strong> las variables guardan una única pieza. Si varias piezas compatibles entran simultáneamente, este diseño sencillo no mantiene una lista ni gestiona prioridades. Para el escenario de prueba con una sola esfera es suficiente.</div>
+<h3>4.4. <code>Start()</code> y referencias</h3>
+<p>La intención de <code>Start()</code> es obtener los componentes necesarios. Sin embargo, las dos líneas actuales llaman a <code>GetComponent</code> sobre las propias variables:</p>
+<pre><code>sistemaInteraccion =
+    sistemaInteraccion.GetComponent&lt;SistemaInteraccion&gt;();
+
+triggerDesmontajePieza =
+    triggerDesmontajePieza.GetComponent&lt;TriggerDesmontajePieza&gt;();</code></pre>
+<p>Esto <strong>no busca los componentes en la escena</strong>. Solo busca un componente en el mismo GameObject que ya está referenciado por cada variable. Si la variable no se asignó previamente en el Inspector, será <code>null</code> y se producirá un <code>NullReferenceException</code>.</p>
+<p>Por tanto, con este código las dos referencias deben estar asignadas en el Inspector antes de iniciar la escena. Una alternativa es buscar los componentes de forma explícita si no están asignados, por ejemplo con <code>FindFirstObjectByType&lt;SistemaInteraccion&gt;()</code>, pero esa búsqueda solo es apropiada si existe una única instancia relevante.</p>
+<h3>4.5. <code>Update()</code> y tecla G</h3>
+<p>En cada frame se comprueba si se acaba de pulsar G mediante <code>Input.GetKeyDown(KeyCode.G)</code>. Si no se ha pulsado, el método termina inmediatamente.</p>
+<p>Si se pulsa G:</p>
+<ol>
+<li>Si <code>piezaInstalada</code> no es <code>null</code>, intenta desmontarla llamando a <code>DesmontarPieza()</code>.</li>
+<li>Si <code>piezaDetectada</code> no es <code>null</code>, llama a <code>MontarPieza()</code> y después a <code>sistemaInteraccion.SoltarObjeto()</code>.</li>
+</ol>
+<div class="callout warn"><strong>Orden y posible doble acción:</strong> son dos bloques <code>if</code> independientes. Si por alguna situación excepcional ambas referencias están asignadas al pulsar G, se intentarán ejecutar ambas operaciones en el mismo frame. Además, <code>SoltarObjeto()</code> se llama aunque <code>MontarPieza()</code> haya terminado anticipadamente por no tener <code>puntoAnclaje</code>. Una mejora sería hacer que el montaje comunique si tuvo éxito y soltar solo en ese caso.</div>
+<h3>4.6. Montaje: <code>MontarPieza()</code></h3>
+<p>La secuencia de montaje es la siguiente:</p>
+<ol>
+<li><strong>Validar el anclaje:</strong> si <code>puntoAnclaje</code> es <code>null</code>, el método termina sin montar.</li>
+<li><strong>Guardar la pieza:</strong> copia <code>piezaDetectada</code> en una variable local para trabajar con la pieza seleccionada.</li>
+<li><strong>Buscar el Rigidbody:</strong> busca un Rigidbody en la pieza o en sus padres. Es necesario para cambiar su comportamiento físico.</li>
+<li><strong>Colocar y orientar:</strong> <code>SetPositionAndRotation</code> sitúa la pieza en la posición y rotación del anclaje.</li>
+<li><strong>Detener el movimiento:</strong> pone <code>linearVelocity</code> y <code>angularVelocity</code> a cero para evitar que conserve velocidad lineal o giro.</li>
+<li><strong>Hacerla cinemática:</strong> <code>isKinematic = true</code> hace que el Rigidbody deje de responder a fuerzas y simulación dinámica. <code>useGravity = false</code> desactiva la gravedad.</li>
+<li><strong>Establecer la relación de jerarquía:</strong> <code>SetParent(transform, true)</code> convierte el objeto del punto de montaje en padre de la pieza, conservando su transformación mundial.</li>
+<li><strong>Actualizar el estado:</strong> marca <code>estaMontada = true</code>, guarda la referencia en <code>piezaInstalada</code> y limpia <code>piezaDetectada</code>.</li>
+</ol>
+<p>La pieza queda en el anclaje y registrada como instalada. El Rigidbody cinemático permite que permanezca fija sin que la gravedad la haga caer.</p>
+<h3>4.7. Desmontaje: <code>DesmontarPieza()</code></h3>
+<ol>
+<li>Comprueba que existe una referencia a <code>triggerDesmontajePieza</code> y que <code>playerInRangePoint1</code> es <code>true</code>. Si no se cumple, termina sin desmontar.</li>
+<li>Comprueba que <code>piezaInstalada</code> contiene una pieza.</li>
+<li>Guarda la pieza en una variable local.</li>
+<li><code>SetParent(null, true)</code> la separa de la estructura y conserva su posición y rotación en el mundo.</li>
+<li>Busca un Rigidbody y, si existe, activa las colisiones, desactiva el modo cinemático y reactiva la gravedad.</li>
+<li>Marca <code>estaMontada = false</code> y limpia <code>piezaInstalada</code>.</li>
+</ol>
+<div class="callout warn"><strong>Detalle del Rigidbody:</strong> el código busca el Rigidbody con <code>pieza.GetComponentInParent&lt;Rigidbody&gt;()</code> después de separar la pieza con <code>SetParent(null, true)</code>. Si el Rigidbody estaba en un padre anterior y no en el propio objeto de la pieza, puede dejar de encontrarse después de separarla. Es más robusto guardar la referencia al Rigidbody antes de cambiar el padre, o usar <code>pieza.GetComponent&lt;Rigidbody&gt;()</code> si el Rigidbody está siempre en el mismo GameObject que <code>PiezaMontaje1</code>.</div>
+</section>
+
+<section id="interaccion">
+<h2>5. Script 3 — <code>SistemaInteraccion</code></h2>
+<p>Este es el controlador de interacción del jugador. Gestiona tres tareas relacionadas: detectar objetos bajo el centro de la cámara, sujetar y soltar un Rigidbody, y mostrar los mensajes de ayuda de la interfaz.</p>
+<h3>5.1. Raycast</h3>
+<table>
+<tr><th>Variable</th><th>Función</th></tr>
+<tr><td><code>distanciaDeInteraccion</code></td><td>Distancia máxima, en unidades de Unity, a la que el Raycast puede detectar un objeto. El valor inicial es 4.</td></tr>
+<tr><td><code>capasParaRaycast</code></td><td>Máscara de capas que limita qué colliders puede detectar el Raycast. Debe incluir la capa de las piezas interactuables.</td></tr>
+<tr><td><code>camaraJugador</code></td><td>Cámara desde la que se lanza el rayo. Si no se asigna, el script intenta usar <code>Camera.main</code>.</td></tr>
+</table>
+<p>El rayo se construye con <code>ViewportPointToRay(new Vector3(0.5f, 0.5f, 0))</code>. Las coordenadas X e Y de 0.5 representan el centro de la vista de la cámara. Por eso el jugador apunta a un objeto colocándolo en el centro de la pantalla.</p>
+<h3>5.2. Interfaz</h3>
+<table>
+<tr><th>Variable</th><th>Cuándo se pretende mostrar</th></tr>
+<tr><td><code>textoInteractuar</code></td><td>Cuando el Raycast encuentra un objeto con Rigidbody, tag <code>Interactuable</code> y pieza todavía no montada.</td></tr>
+<tr><td><code>textoInteractuarSoltar</code></td><td>Cuando el jugador tiene un objeto agarrado y no está mostrando el mensaje de montaje.</td></tr>
+<tr><td><code>montarText</code></td><td>Cuando el jugador sostiene un objeto y <code>montajeClass.inTrigger</code> indica que la pieza está en el Trigger de montaje.</td></tr>
+<tr><td><code>desmontarText</code></td><td>Cuando el jugador está dentro del Trigger de desmontaje y existe una pieza instalada.</td></tr>
+</table>
+<p>Los textos son referencias a componentes <code>TextMeshProUGUI</code>. El script no crea esos textos: espera que estén diseñados en un Canvas y asignados en el Inspector.</p>
+<h3>5.3. Sujeción</h3>
+<table>
+<tr><th>Variable</th><th>Función</th></tr>
+<tr><td><code>puntoDeSujecion</code></td><td>Transform hacia el que se atrae el objeto agarrado. Si no se asigna, se crea un objeto vacío como hijo de la cámara, a 2 unidades en su eje Z local.</td></tr>
+<tr><td><code>velocidadAtraccion</code></td><td>Multiplicador que convierte la distancia al punto de sujeción en una velocidad deseada. Valor inicial: 12.</td></tr>
+<tr><td><code>velocidadMaxima</code></td><td>Límite de magnitud de la velocidad aplicada al Rigidbody. Valor inicial: 10.</td></tr>
+<tr><td><code>objetoAgarrado</code></td><td>Rigidbody actualmente sujeto. Si es <code>null</code>, el sistema considera que no hay objeto agarrado.</td></tr>
+</table>
+<h3>5.4. Referencia al montaje y variables privadas</h3>
+<p><code>montajeClass</code> referencia al <code>PuntoMontaje1</code> para consultar si la pieza está dentro del área de montaje y si hay una pieza instalada. Si no se asigna, <code>Start()</code> intenta encontrar uno mediante <code>FindFirstObjectByType&lt;PuntoMontaje1&gt;()</code>.</p>
+<p><code>detectCollisionsOriginal</code>, <code>dampingOriginal</code> y <code>angularDampingOriginal</code> guardan valores físicos originales al recoger un objeto. En el código actual esos valores se guardan, pero no se restauran posteriormente. Por tanto, son variables preparadas para una restauración que todavía no está implementada.</p>
+<h3>5.5. <code>Start()</code></h3>
+<p>Se ejecuta una vez al inicializar el componente. Sus tareas son:</p>
+<ul>
+<li>Obtener la cámara principal si <code>camaraJugador</code> no fue asignada.</li>
+<li>Desactivar este componente si no se encuentra ninguna cámara, ya que no podría lanzar el Raycast.</li>
+<li>Buscar un <code>PuntoMontaje1</code> si <code>montajeClass</code> está vacío.</li>
+<li>Ocultar inicialmente todos los textos de interacción.</li>
+<li>Crear <code>PuntoDeSujecion</code> como hijo de la cámara, si no se había asignado manualmente.</li>
+</ul>
+<h3>5.6. Métodos de interfaz</h3>
+<p><code>esconderTodosTextos()</code> desactiva los cuatro objetos de texto si sus referencias no son <code>null</code>. Se llama al principio de cada <code>Update()</code>, por lo que la interfaz se reconstruye cada frame según el estado actual.</p>
+<p><code>mostrarTexto(TextMeshProUGUI texto)</code> activa el GameObject del texto recibido. <code>esconderTexto(TextMeshProUGUI texto)</code> lo desactiva. Ambos métodos comprueban que la referencia no sea <code>null</code> antes de acceder a ella.</p>
+<h3>5.7. <code>Update()</code>: prioridad de los mensajes</h3>
+<p>Primero se ocultan todos los textos. Después se evalúa el contexto actual.</p>
+<h4>A. Mensaje para desmontar</h4>
+<p>Se muestra <code>desmontarText</code> cuando se cumplen simultáneamente estas tres condiciones:</p>
+<ul>
+<li><code>montajeClass</code> existe.</li>
+<li><code>montajeClass.triggerDesmontajePieza</code> existe y su <code>playerInRangePoint1</code> es <code>true</code>.</li>
+<li><code>montajeClass.piezaInstalada</code> no es <code>null</code>.</li>
+</ul>
+<p>Esto significa que el jugador está en la zona autorizada y hay una pieza que se puede desmontar.</p>
+<h4>B. Cuando ya hay un objeto agarrado</h4>
+<p>Si <code>objetoAgarrado != null</code>, el script oculta los mensajes de interacción normal y muestra el de soltar. Si además <code>montajeClass.inTrigger</code> es <code>true</code>, muestra <code>montarText</code> y oculta el mensaje de soltar. Si no está dentro del Trigger de montaje, llama a <code>esconderTodosTextos()</code>.</p>
+<p>Al final de esta rama se usa <code>return</code>. Esto es importante: mientras el jugador sostiene un objeto, el método no continúa al Raycast de objetos nuevos. El jugador primero debe soltar o montar la pieza.</p>
+<h4>C. Cuando no hay un objeto agarrado</h4>
+<p>Se lanza el Raycast desde el centro de la cámara. Si encuentra un Rigidbody y su tag es <code>Interactuable</code>, el script comprueba si la pieza no está montada. Si no está montada, muestra <code>textoInteractuar</code>. Al pulsar F, llama a <code>AgarrarObjeto(rb)</code>.</p>
+<div class="callout warn"><strong>Suposición del código actual:</strong> después de encontrar el Rigidbody, se llama a <code>GetComponentInParent&lt;PiezaMontaje1&gt;().estaMontada</code> sin comprobar si el componente existe. Por ello, todo objeto con tag <code>Interactuable</code> que pueda detectar el Raycast debe tener <code>PiezaMontaje1</code> en sí mismo o en uno de sus padres. Si no, puede producirse un <code>NullReferenceException</code>.</div>
+<h3>5.8. <code>FixedUpdate()</code>: movimiento hacia el punto de sujeción</h3>
+<p><code>FixedUpdate()</code> se ejecuta en el ciclo de física de Unity. Si no hay objeto agarrado, termina. Si lo hay:</p>
+<ol>
+<li>Calcula la dirección desde el centro de masa del Rigidbody hasta el punto de sujeción.</li>
+<li>Multiplica esa dirección por <code>velocidadAtraccion</code> para obtener una velocidad deseada.</li>
+<li>Limita la magnitud de esa velocidad con <code>Vector3.ClampMagnitude</code> y <code>velocidadMaxima</code>.</li>
+<li>Asigna el resultado a <code>rb.linearVelocity</code>.</li>
+</ol>
+<p>El resultado es una atracción basada en velocidad: el objeto se desplaza hacia el punto delante de la cámara. No se usa una articulación física ni se teletransporta el objeto cada frame. Las colisiones pueden influir en su recorrido.</p>
+<h3>5.9. <code>AgarrarObjeto(Rigidbody rb)</code></h3>
+<p>Este método recibe el Rigidbody que el Raycast ha identificado. Oculta el texto de interacción, muestra el texto de soltar, guarda el Rigidbody en <code>objetoAgarrado</code> y almacena algunos valores físicos originales. Después aumenta <code>linearDamping</code> y <code>angularDamping</code> a 5 para amortiguar el movimiento y el giro mientras se transporta.</p>
+<p>El método no desactiva la gravedad ni convierte el Rigidbody en cinemático. La atracción se realiza en <code>FixedUpdate()</code> asignando velocidad.</p>
+<h3>5.10. <code>SoltarObjeto()</code></h3>
+<p>Si no hay objeto agarrado, no hace nada. En caso contrario, guarda localmente el Rigidbody, limpia <code>objetoAgarrado</code>, establece <code>linearDamping = 0</code> y <code>angularDamping = 0.05</code>, y oculta todos los textos.</p>
+<p>Al limpiar <code>objetoAgarrado</code>, <code>FixedUpdate()</code> deja de modificar su velocidad y el objeto vuelve a comportarse según su configuración física actual.</p>
+<h3>5.11. Otras partes</h3>
+<p><code>OnDisable()</code> llama a <code>SoltarObjeto()</code> si el componente se desactiva mientras sostiene algo. Esto evita dejar el objeto registrado como agarrado por un sistema que ya no está activo.</p>
+<p>La propiedad <code>ObjetoAgarrado</code> expone el Rigidbody actual mediante un getter de solo lectura. Otros scripts pueden consultar qué objeto se está sujetando, pero no pueden asignarlo directamente a través de esa propiedad.</p>
+</section>
+
+<section id="pieza">
+<h2>6. Script 4 — <code>PiezaMontaje1</code></h2>
+<pre><code>using UnityEngine;
+
+public class PiezaMontaje1 : MonoBehaviour
+{
+    public bool estaMontada = false;
+}</code></pre>
+<p>Es el componente identificador más sencillo del sistema. Se añade a cada objeto que pueda instalarse en el punto de montaje.</p>
+<table>
+<tr><th>Elemento</th><th>Significado</th></tr>
+<tr><td><code>estaMontada</code></td><td>Estado de la pieza. <code>false</code> significa que no está instalada; <code>true</code> significa que el sistema la considera instalada.</td></tr>
+</table>
+<p>El componente no mueve el objeto, no modifica su Rigidbody y no escucha entradas de teclado. Solo guarda el estado. Las operaciones reales las realizan <code>PuntoMontaje1</code> y <code>SistemaInteraccion</code>.</p>
+<div class="callout good"><strong>Ventaja de separar responsabilidades:</strong> otros sistemas pueden preguntar <code>estaMontada</code> sin tener que conocer todos los detalles del montaje. Por ejemplo, el sistema de interacción evita recoger una pieza que ya está instalada.</div>
+</section>
+
+<section id="flujo">
+<h2>7. Flujo completo de funcionamiento</h2>
+<h3>7.1. Recoger una pieza</h3>
+<ol>
+<li>El jugador apunta con el centro de la cámara a la pieza.</li>
+<li>El Raycast detecta un collider incluido en <code>capasParaRaycast</code>.</li>
+<li>El sistema busca un Rigidbody en el collider o sus padres.</li>
+<li>Comprueba que el Rigidbody tenga el tag <code>Interactuable</code>.</li>
+<li>Comprueba que exista <code>PiezaMontaje1</code> y que <code>estaMontada</code> sea <code>false</code>.</li>
+<li>Al pulsar F, el Rigidbody se guarda en <code>objetoAgarrado</code> y se aplica amortiguación.</li>
+<li>En cada FixedUpdate, su velocidad se dirige hacia <code>puntoDeSujecion</code>.</li>
+</ol>
+<h3>7.2. Montar una pieza</h3>
+<ol>
+<li>La pieza entra en el Trigger del objeto que contiene <code>PuntoMontaje1</code>.</li>
+<li><code>OnTriggerEnter</code> encuentra <code>PiezaMontaje1</code>, comprueba que no esté instalada y guarda la referencia en <code>piezaDetectada</code>.</li>
+<li><code>inTrigger</code> pasa a <code>true</code>.</li>
+<li><code>SistemaInteraccion</code> detecta que hay un objeto agarrado y que <code>inTrigger</code> es verdadero; muestra el texto de montar.</li>
+<li>Al pulsar G, <code>PuntoMontaje1.Update()</code> llama a <code>MontarPieza()</code>.</li>
+<li>La pieza se alinea con <code>puntoAnclaje</code>, se detiene, se hace cinemática y se convierte en hija del punto de montaje.</li>
+<li>Se marca <code>estaMontada = true</code> y se guarda como <code>piezaInstalada</code>.</li>
+<li>Se llama a <code>SoltarObjeto()</code> para que el sistema de interacción deje de atraerla.</li>
+</ol>
+<h3>7.3. Desmontar una pieza</h3>
+<ol>
+<li>El jugador entra en el Trigger de desmontaje.</li>
+<li><code>TriggerDesmontajePieza</code> encuentra <code>PlayerTrigger</code> en el collider o alguno de sus padres.</li>
+<li>El indicador <code>playerInRangePoint1</code> pasa a <code>true</code>.</li>
+<li><code>SistemaInteraccion</code> comprueba que el jugador está en rango y que <code>piezaInstalada</code> no es <code>null</code>; entonces muestra <code>desmontarText</code>.</li>
+<li>Al pulsar G, <code>PuntoMontaje1</code> llama a <code>DesmontarPieza()</code>.</li>
+<li>El método comprueba de nuevo que el jugador está en rango.</li>
+<li>La pieza se separa de la estructura, se vuelve dinámica y recupera la gravedad.</li>
+<li>Se marca <code>estaMontada = false</code> y se limpia <code>piezaInstalada</code>.</li>
+</ol>
+<div class="callout"><strong>Nota sobre la tecla G:</strong> la misma tecla se usa para montar y desmontar. La acción que se intenta depende de las referencias que estén activas: <code>piezaInstalada</code> para desmontar y <code>piezaDetectada</code> para montar.</div>
+</section>
+
+<section id="inspector">
+<h2>8. Configuración en Unity Inspector</h2>
+<h3>8.1. Objeto con <code>PuntoMontaje1</code></h3>
+<ul>
+<li>Asignar <code>puntoAnclaje</code> al Transform que representa la posición y orientación final de la pieza.</li>
+<li>Asignar <code>sistemaInteraccion</code> al objeto que contiene el único <code>SistemaInteraccion</code> que controla al jugador.</li>
+<li>Asignar <code>triggerDesmontajePieza</code> al objeto que contiene el script de zona de desmontaje.</li>
+<li>El collider de detección de montaje debe tener <strong>Is Trigger</strong> activado.</li>
+</ul>
+<h3>8.2. Objeto del jugador</h3>
+<ul>
+<li>Añadir un único <code>SistemaInteraccion</code> al objeto que debe controlar la interacción.</li>
+<li>Asignar <code>camaraJugador</code> o asegurarse de que la cámara tenga el tag <code>MainCamera</code>.</li>
+<li>Asignar los cuatro textos TMP: interactuar, soltar, montar y desmontar.</li>
+<li>Asignar <code>montajeClass</code> o permitir que el script encuentre el punto de montaje en la escena.</li>
+<li>Asegurarse de que el jugador o uno de sus padres tenga <code>PlayerTrigger</code>.</li>
+</ul>
+<h3>8.3. Objeto de la pieza</h3>
+<ul>
+<li>Añadir <code>PiezaMontaje1</code>.</li>
+<li>Añadir un Collider adecuado.</li>
+<li>Añadir un Rigidbody, normalmente en el mismo objeto que la pieza.</li>
+<li>Asignar el tag <code>Interactuable</code>.</li>
+<li>Comprobar que la capa del collider esté incluida en <code>capasParaRaycast</code>.</li>
+</ul>
+<h3>8.4. Zona de desmontaje</h3>
+<ul>
+<li>Añadir un Collider y activar <strong>Is Trigger</strong>.</li>
+<li>Añadir <code>TriggerDesmontajePieza</code>.</li>
+<li>Colocar y dimensionar el volumen para que cubra el área desde la que se permite desmontar.</li>
+</ul>
+</section>
+
+<section id="fisica">
+<h2>9. Física, Rigidbody y eventos Trigger</h2>
+<p>Los eventos <code>OnTriggerEnter</code> y <code>OnTriggerExit</code> no se producen solo por tener dos colliders en la escena. La configuración de física debe cumplir las reglas de Unity para eventos Trigger: uno de los colliders debe ser Trigger y al menos uno de los objetos implicados debe participar mediante un Rigidbody o el tipo de controlador físico correspondiente.</p>
+<h3>Estados físicos de la pieza</h3>
+<table>
+<tr><th>Estado</th><th><code>isKinematic</code></th><th><code>useGravity</code></th><th>Comportamiento esperado</th></tr>
+<tr><td>Antes de recoger</td><td>Normalmente <code>false</code></td><td>Normalmente <code>true</code></td><td>La física y gravedad actúan sobre la pieza.</td></tr>
+<tr><td>Mientras se transporta</td><td>El código no lo cambia</td><td>El código no lo cambia</td><td>El script dirige su velocidad hacia el punto de sujeción.</td></tr>
+<tr><td>Instalada</td><td><code>true</code></td><td><code>false</code></td><td>La pieza no cae por gravedad ni responde a fuerzas dinámicas.</td></tr>
+<tr><td>Desmontada</td><td><code>false</code></td><td><code>true</code></td><td>La pieza vuelve a ser dinámica y puede caer.</td></tr>
+</table>
+<p><code>linearVelocity</code> controla la velocidad lineal del Rigidbody y <code>angularVelocity</code> su velocidad de giro. <code>linearDamping</code> y <code>angularDamping</code> amortiguan el movimiento y la rotación. <code>detectCollisions</code> controla si el Rigidbody detecta colisiones; en el montaje actual no se pone a <code>false</code>, mientras que al desmontar se fuerza a <code>true</code>.</p>
+</section>
+
+<section id="avisos">
+<h2>10. Observaciones y limitaciones del código proporcionado</h2>
+<p>Esta sección documenta el comportamiento real del código recibido, no una versión hipotética corregida. Son puntos importantes para mantenimiento y futuras ampliaciones.</p>
+<h3>10.1. Referencias en <code>PuntoMontaje1.Start()</code></h3>
+<p>Las llamadas a <code>GetComponent</code> se realizan sobre referencias que deben existir previamente. Si los campos están vacíos en el Inspector, el script puede lanzar una excepción al iniciar. La asignación manual en el Inspector es válida; en ese caso, no hace falta volver a buscar el componente sobre la misma referencia.</p>
+<h3>10.2. Posible doble llamada a <code>SoltarObjeto()</code></h3>
+<p>En la rama de objeto agarrado de <code>SistemaInteraccion.Update()</code>, el código contiene:</p>
+<pre><code>if (Input.GetKeyDown(KeyCode.F))
+{
+    PiezaMontaje1 pieza =
+        objetoAgarrado.GetComponentInParent&lt;PiezaMontaje1&gt;();
+
+    if (pieza == null || !pieza.estaMontada)
+    {
+        SoltarObjeto();
+    }
+    SoltarObjeto();
+}</code></pre>
+<p>La segunda llamada es incondicional dentro de la pulsación de F. Por eso, incluso si la pieza está montada, se llama a <code>SoltarObjeto()</code>. Si la pieza no está montada, se llama dos veces, aunque la segunda llamada no hace nada porque la primera ya dejó <code>objetoAgarrado</code> en <code>null</code>. La condición interna queda, en la práctica, sin efecto sobre el resultado final de esa pulsación.</p>
+<h3>10.3. Comprobación de <code>PiezaMontaje1</code> en el Raycast</h3>
+<p>El Raycast presupone que cualquier objeto con tag <code>Interactuable</code> tiene el componente <code>PiezaMontaje1</code> en sí mismo o en un padre. Si se quiere permitir otros tipos de objetos interactuables, debe comprobarse si el componente existe antes de consultar <code>estaMontada</code>.</p>
+<h3>10.4. Variables físicas guardadas pero no restauradas</h3>
+<p>Al recoger se guardan <code>detectCollisionsOriginal</code>, <code>dampingOriginal</code> y <code>angularDampingOriginal</code>. Al soltar, sin embargo, se asignan valores fijos de damping. Los valores originales guardados no se utilizan. Esto puede ser intencional si todas las piezas deben recuperar esos valores fijos, pero no es una restauración exacta de su estado inicial.</p>
+<h3>10.5. Detección de varios colliders del jugador</h3>
+<p><code>TriggerDesmontajePieza</code> usa un booleano simple. Si el jugador tiene varios colliders, la salida de uno puede poner el booleano a <code>false</code> aunque otro collider del mismo jugador permanezca dentro. Para resolverlo se necesita mantener un conjunto o contador de colliders que siguen dentro, asegurando que solo se desactive el permiso cuando ya no quede ninguno.</p>
+<h3>10.6. Varias piezas dentro del Trigger de montaje</h3>
+<p><code>piezaDetectada</code> almacena una sola pieza. El diseño está orientado a un punto y una pieza cada vez. Si se introducen varias piezas o varios colliders por pieza, puede ser necesario gestionar referencias por pieza y evitar que un evento de salida borre un estado que corresponde a otra.</p>
+<h3>10.7. Import usings</h3>
+<p><code>using Unity.VisualScripting;</code> en <code>PuntoMontaje1</code> y <code>using JetBrains.Annotations;</code> en <code>TriggerDesmontajePieza</code> no se utilizan en el código mostrado. No afectan al comportamiento, pero pueden eliminarse si no se necesitan.</p>
+<h3>10.8. Textos: orden de prioridad</h3>
+<p><code>esconderTodosTextos()</code> se ejecuta al principio de cada frame. Después se vuelven a mostrar los mensajes que correspondan. En la rama de objeto agarrado, si el jugador no está dentro del Trigger de montaje, se vuelven a ocultar todos los textos. Eso también oculta <code>desmontarText</code>, aunque se hubiera mostrado al principio del frame. Por tanto, si el jugador sostiene una pieza mientras está en la zona de desmontaje, la rama de objeto agarrado puede ocultar el mensaje de desmontar. La prioridad actual de la interfaz depende del orden de ejecución dentro de <code>Update()</code>.</p>
+<div class="callout warn"><strong>Recomendación de mantenimiento:</strong> antes de ampliar el sistema, conviene decidir explícitamente qué texto tiene prioridad cuando se cumplen varias condiciones (por ejemplo, jugador en zona de desmontaje y objeto agarrado). Después se puede centralizar esa decisión en un único bloque de interfaz.</div>
+</section>
+
+<section id="pruebas">
+<h2>11. Lista de pruebas recomendadas</h2>
+<table>
+<tr><th>Prueba</th><th>Resultado esperado</th></tr>
+<tr><td>Mirar una pieza compatible desde menos de la distancia configurada.</td><td>Aparece el texto de interacción.</td></tr>
+<tr><td>Mirar un objeto que no tenga tag <code>Interactuable</code>.</td><td>No se ofrece la recogida.</td></tr>
+<tr><td>Pulsar F mirando una pieza libre.</td><td>La pieza pasa a ser <code>objetoAgarrado</code> y sigue el punto de sujeción.</td></tr>
+<tr><td>Entrar con la pieza agarrada en el Trigger de montaje.</td><td><code>piezaDetectada</code> se asigna, <code>inTrigger</code> pasa a true y aparece el texto de montaje.</td></tr>
+<tr><td>Pulsar G dentro del Trigger de montaje.</td><td>La pieza se alinea con el anclaje, queda cinemática, sin gravedad y se marca como instalada.</td></tr>
+<tr><td>Intentar recoger una pieza ya instalada.</td><td>El sistema no debería ofrecer recogerla mediante el flujo normal.</td></tr>
+<tr><td>Estar fuera del Trigger de desmontaje y pulsar G.</td><td>La pieza permanece instalada.</td></tr>
+<tr><td>Entrar en el Trigger de desmontaje con una pieza instalada.</td><td>Aparece el texto de desmontaje.</td></tr>
+<tr><td>Pulsar G dentro del Trigger de desmontaje.</td><td>La pieza se separa, recupera gravedad y deja de estar marcada como montada.</td></tr>
+<tr><td>Salir del Trigger de desmontaje.</td><td>El indicador de rango vuelve a false y se oculta el texto si no se cumple otra condición.</td></tr>
+</table>
+</section>
+
+<section id="glosario">
+<h2>12. Glosario</h2>
+<table>
+<tr><th>Término</th><th>Explicación</th></tr>
+<tr><td>GameObject</td><td>Objeto de la escena de Unity al que se pueden añadir componentes.</td></tr>
+<tr><td>Component</td><td>Elemento que añade datos o comportamiento a un GameObject; los scripts mostrados heredan de <code>MonoBehaviour</code>.</td></tr>
+<tr><td>Transform</td><td>Componente que representa posición, rotación y escala local o mundial.</td></tr>
+<tr><td>Collider</td><td>Forma física utilizada para detectar contactos o solapamientos.</td></tr>
+<tr><td>Is Trigger</td><td>Opción que hace que el collider detecte entradas y salidas sin actuar como una superficie física sólida normal.</td></tr>
+<tr><td>Rigidbody</td><td>Componente que permite que un objeto participe en la simulación física.</td></tr>
+<tr><td>Raycast</td><td>Rayo lanzado desde un origen y una dirección para detectar colliders.</td></tr>
+<tr><td>LayerMask</td><td>Filtro que limita las capas que puede detectar una consulta física.</td></tr>
+<tr><td>Tag</td><td>Etiqueta de GameObject utilizada para clasificarlo; aquí se utiliza <code>Interactuable</code>.</td></tr>
+<tr><td><code>null</code></td><td>Indica que una referencia no apunta a ningún objeto o componente.</td></tr>
+<tr><td><code>GetComponentInParent</code></td><td>Busca un componente en el objeto actual y sube por sus padres.</td></tr>
+<tr><td><code>SetParent</code></td><td>Cambia el padre de un Transform en la jerarquía.</td></tr>
+<tr><td><code>isKinematic</code></td><td>Hace que el Rigidbody no sea controlado por fuerzas y simulación dinámica.</td></tr>
+<tr><td><code>FixedUpdate</code></td><td>Evento de Unity destinado a la lógica que interactúa con el ciclo de física.</td></tr>
+<tr><td>TextMeshProUGUI</td><td>Componente de texto de TextMesh Pro diseñado para mostrarse dentro de una interfaz Canvas.</td></tr>
+</table>
+</section>
+
+<div class="panel">
+<h2>Resumen final</h2>
+<p>El sistema se basa en estados y referencias compartidas. <code>PiezaMontaje1.estaMontada</code> indica si una pieza está instalada; <code>PuntoMontaje1</code> controla la instalación y retirada; <code>TriggerDesmontajePieza</code> informa de la proximidad del jugador; y <code>SistemaInteraccion</code> se ocupa de recoger, transportar, soltar y mostrar la interfaz.</p>
+<p>La tecla F se utiliza para recoger o soltar. La tecla G se utiliza para montar o desmontar. El montaje requiere que una pieza compatible haya entrado en el Trigger de montaje; el desmontaje requiere que exista una pieza instalada y que el jugador esté dentro del Trigger de desmontaje.</p>
+<p class="small">Documento elaborado a partir de los cuatro scripts facilitados. Las observaciones de la sección 10 describen limitaciones presentes en esos fragmentos y no implican que se hayan modificado los scripts.</p>
+</div>
+</main>
+<footer>Documentación técnica del sistema de montaje e interacción · Unity / C#</footer>
+</body>
+</html>

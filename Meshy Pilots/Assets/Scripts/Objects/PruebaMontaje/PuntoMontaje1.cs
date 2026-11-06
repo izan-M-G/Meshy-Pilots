@@ -149,9 +149,7 @@ public class PuntoMontaje1 : MonoBehaviour
     {
 
 
-        Debug.Log("Jugador dentro del trigger: " +
-        (triggerDesmontajePieza != null &&
-         triggerDesmontajePieza.playerInRangePoint1));
+      
 
         if (triggerDesmontajePieza == null ||
             !triggerDesmontajePieza.playerInRangePoint1)

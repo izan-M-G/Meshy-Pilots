@@ -139,11 +139,9 @@ public class SistemaInteraccion : MonoBehaviour
                 if (montarText != null)
                 {
                     montarText.gameObject.SetActive(true);
-                    Debug.Log("Texto activar: " + montarText.gameObject.activeSelf);
                 }
                 else
                 {
-                    Debug.LogError("montarText NO está asignado");
                 }
 
                 esconderTexto(textoInteractuar);
