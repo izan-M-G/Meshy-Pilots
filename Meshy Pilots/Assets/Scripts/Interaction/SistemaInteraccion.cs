@@ -143,13 +143,7 @@ public class SistemaInteraccion : MonoBehaviour
                 esconderTexto(textoInteractuar);
                 esconderTexto(textoInteractuarSoltar);
             }
-            else
-            {
-                esconderTodosTextos();
-
-
-            }
-
+           
 
 
 
