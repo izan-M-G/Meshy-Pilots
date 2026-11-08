@@ -94,7 +94,7 @@ public class PuntoMontaje1 : MonoBehaviour
 
         }
 
-        if(piezaDetectada != null)
+        if(piezaDetectada != null && sistemaInteraccion.isAgarrado)
         {
             MontarPieza();
             sistemaInteraccion.SoltarObjeto();

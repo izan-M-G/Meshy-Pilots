@@ -32,7 +32,7 @@ public class SistemaInteraccion : MonoBehaviour
     private float dampingOriginal;
     private float angularDampingOriginal;
 
-
+    public bool isAgarrado = false;
 
 
 
@@ -240,7 +240,7 @@ public class SistemaInteraccion : MonoBehaviour
 
     public void AgarrarObjeto(Rigidbody rb)
     {
-       
+        isAgarrado = true;
             esconderTexto(textoInteractuar);
             mostrarTexto(textoInteractuarSoltar);
 
@@ -262,6 +262,7 @@ public class SistemaInteraccion : MonoBehaviour
 
     public void SoltarObjeto()
     {
+        isAgarrado = false;
         if (objetoAgarrado == null)
             return;
 
