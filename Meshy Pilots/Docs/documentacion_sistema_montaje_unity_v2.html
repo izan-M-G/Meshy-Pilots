@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentación — Sistema de montaje de piezas en Unity</title>
+<style>
+:root{--bg:#f4f6fa;--panel:#fff;--ink:#182235;--muted:#596579;--line:#dce2ec;--accent:#315bd6;--accent-soft:#edf2ff;--code:#111827;--code-ink:#e5e7eb;--warn:#fff7e6;--warn-line:#e7b34b;--good:#eaf7ef}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:linear-gradient(130deg,#17233d,#294b91);color:white;padding:52px 22px 44px}
+header .wrap,main{max-width:1080px;margin:auto}header p{color:#d9e3ff;max-width:760px;margin:10px 0 0}
+h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.12;margin:0}h2{font-size:1.65rem;margin:0 0 14px}h3{font-size:1.15rem;margin:24px 0 8px}
+main{padding:28px 20px 64px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;margin:18px 0;box-shadow:0 5px 20px #17233d08}
+.kicker{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;font-weight:750;color:var(--accent)}
+.lead{font-size:1.08rem;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.tile{background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:16px}.tile strong{display:block;margin-bottom:4px}
+p{margin:8px 0 14px}ul,ol{padding-left:24px}li{margin:5px 0}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#eef1f6;padding:2px 5px;border-radius:5px;font-size:.92em}
+pre{background:var(--code);color:var(--code-ink);padding:18px;border-radius:12px;overflow:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre}
+pre code{background:none;padding:0;color:inherit}
+table{width:100%;border-collapse:collapse;margin:12px 0}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#f4f6fb}
+.note{padding:15px 17px;border-radius:10px;background:var(--accent-soft);border-left:4px solid var(--accent);margin:14px 0}
+.warning{background:var(--warn);border-left-color:var(--warn-line)}.success{background:var(--good);border-left-color:#39945a}
+.tag{display:inline-block;border-radius:99px;padding:3px 9px;background:#edf0f6;color:#3f4b60;font-size:.8rem;font-weight:700}
+nav a{color:var(--accent);text-decoration:none;margin-right:14px;display:inline-block}a:hover{text-decoration:underline}
+details{border:1px solid var(--line);border-radius:10px;margin:12px 0;background:#fbfcff}summary{padding:12px 15px;font-weight:700;cursor:pointer}details>div{padding:0 15px 15px}
+footer{max-width:1080px;margin:auto;padding:0 20px 35px;color:var(--muted);font-size:.9rem}
+@media(max-width:600px){header{padding:38px 18px}main{padding:18px 12px 45px}.card{padding:18px}th,td{padding:8px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="kicker" style="color:#b9caff">Unity 6 · C# · Guía del proyecto</div>
+<h1>Sistema de montaje y desmontaje de piezas</h1>
+<p>Documentación de los scripts <strong>PiezaMontaje1</strong>, <strong>PuntoMontaje1</strong> y <strong>SistemaInteraccion</strong>: responsabilidades, configuración de escena, flujo de uso, Inspector y comprobaciones para ampliar el avión con nuevas piezas.</p>
+</div></header>
+<main>
+<section class="card">
+<div class="kicker">Índice</div>
+<nav>
+<a href="#resumen">Resumen</a><a href="#scripts">Scripts</a><a href="#escena">Configuración</a><a href="#flujo">Funcionamiento</a><a href="#ampliar">Añadir piezas</a><a href="#avisos">Notas técnicas</a>
+</nav>
+</section>
+
+<section class="card" id="resumen">
+<div class="kicker">01 · Arquitectura</div><h2>¿Qué hace el sistema?</h2>
+<p class="lead">El jugador apunta a una pieza, la recoge con F, la acerca al trigger de un anclaje compatible y la monta con G. Para desmontar, apunta a una pieza ya instalada y pulsa G.</p>
+<div class="grid">
+<div class="tile"><strong>PiezaMontaje1</strong><span>Identifica qué tipo de pieza es y si ya está montada.</span></div>
+<div class="tile"><strong>PuntoMontaje1</strong><span>Detecta piezas compatibles, las coloca en su anclaje y conserva datos físicos para desmontarlas.</span></div>
+<div class="tile"><strong>SistemaInteraccion</strong><span>Gestiona el raycast, la recogida, la sujeción, las teclas y los textos de interfaz.</span></div>
+</div>
+<div class="note success"><strong>Regla de seguridad del montaje:</strong> no basta con que haya una pieza compatible dentro del trigger. El sistema compara la referencia de esa pieza con la pieza que el jugador tiene agarrada. Así evita montar por error otra pieza que esté en el suelo.</div>
+</section>
+
+<section class="card" id="scripts">
+<div class="kicker">02 · Responsabilidad de cada archivo</div><h2>Los tres scripts</h2>
+<h3>PiezaMontaje1.cs</h3>
+<p>Este componente se coloca en el objeto raíz de cada pieza montable. Su enumeración define las seis categorías admitidas y <code>estaMontada</code> indica si la pieza está instalada en el avión.</p>
+<pre><code>using UnityEngine;
+
+public class PiezaMontaje1 : MonoBehaviour
+{
+    public enum TiposPieza
+    {
+        alaIzq, alaDer, ruedaIzq, ruedaDer, motor, helice
+    }
+
+    public TiposPieza tipoDePieza;
+    public bool estaMontada = false;
+}</code></pre>
+<table><tr><th>Campo</th><th>Uso</th></tr>
+<tr><td><code>tipoDePieza</code></td><td>Se elige en el Inspector. Debe coincidir con el tipo del anclaje donde se instalará.</td></tr>
+<tr><td><code>estaMontada</code></td><td>Empieza normalmente en <code>false</code>. El punto de montaje lo pone en <code>true</code> al instalar y vuelve a <code>false</code> al desmontar.</td></tr></table>
+
+<h3>PuntoMontaje1.cs</h3>
+<p>Se coloca en cada punto de montaje del avión. Cada anclaje tiene su propio trigger y su propio estado: pieza detectada, pieza instalada y registros de Rigidbody.</p>
+<p><strong>Enumeración:</strong> <code>TipoDeAnclaje</code> contiene las mismas categorías que <code>PiezaMontaje1.TiposPieza</code>. La comparación se hace convirtiendo el enum del anclaje al enum de la pieza.</p>
+<h3>El registro rigidbodysAsociados</h3>
+<p>Es un <code>struct</code> serializable que guarda la asociación entre una pieza y su Rigidbody, además de la información capturada antes de montarla:</p>
+<table><tr><th>Dato</th><th>Qué conserva</th></tr>
+<tr><td><code>pieza</code>, <code>tiposDeAnclaje</code>, <code>rigidbodys</code></td><td>La pieza, la categoría del anclaje y la referencia exacta al Rigidbody.</td></tr>
+<tr><td><code>padreOriginal</code></td><td>El Transform que era padre de la pieza antes de montarla.</td></tr>
+<tr><td><code>posicionOriginal</code>, <code>rotacionOriginal</code></td><td>La posición y rotación mundiales originales.</td></tr>
+<tr><td><code>eraKinematic</code>, <code>teniaGravedad</code>, <code>detectabaColisiones</code></td><td>La configuración física anterior.</td></tr>
+<tr><td><code>velocidadOriginal</code>, <code>velocidadAngularOriginal</code></td><td>Las velocidades lineal y angular que tenía al guardar los datos.</td></tr>
+<tr><td><code>linearDampingOriginal</code>, <code>angularDampingOriginal</code></td><td>La resistencia lineal y angular original.</td></tr></table>
+<p><strong>GuardarDatos():</strong> evita registrar dos veces el mismo Rigidbody, amplía el array y guarda el nuevo struct. Se ejecuta antes de cambiar el estado físico y la jerarquía.</p>
+<p><strong>MontarPieza():</strong> verifica que la pieza detectada sea exactamente la pieza agarrada, comprueba el tipo, guarda los datos, alinea el Transform con <code>puntoAnclaje</code>, detiene el Rigidbody, lo hace cinemático, desactiva gravedad y lo hace hijo del punto de montaje.</p>
+<p><strong>DesmontarPieza():</strong> toma el Rigidbody que el jugador está mirando, busca su registro, separa la pieza del avión y restaura las propiedades físicas guardadas. Después marca la pieza como libre y elimina ese registro del array.</p>
+
+<h3>SistemaInteraccion.cs</h3>
+<p>Se coloca en el jugador. Usa un raycast desde el centro de la cámara para detectar objetos con tag <code>Interactuable</code>, recogerlos, mostrar textos y mantener el objeto delante del jugador.</p>
+<table><tr><th>Grupo</th><th>Campos principales</th></tr>
+<tr><td>Raycast</td><td><code>distanciaDeInteraccion</code>, <code>capasParaRaycast</code>, <code>camaraJugador</code>.</td></tr>
+<tr><td>Interfaz</td><td>Textos TMP para interactuar, soltar, montar y desmontar.</td></tr>
+<tr><td>Sujeción</td><td><code>puntoDeSujecion</code>, <code>velocidadAtraccion</code>, <code>velocidadMaxima</code>.</td></tr>
+<tr><td>Estado</td><td><code>objetoAgarrado</code>, <code>isAgarrado</code>, <code>mirandoMontada</code> y <code>piezaMirada</code>.</td></tr>
+<tr><td>Puntos</td><td><code>puntosMontaje</code> contiene todos los <code>PuntoMontaje1</code> encontrados en la escena al iniciar, si el array no se asignó manualmente.</td></tr></table>
+<p><code>FixedUpdate()</code> mueve el Rigidbody hacia el punto de sujeción usando velocidad limitada. <code>AgarrarObjeto()</code> guarda ciertos valores físicos y aumenta el damping. <code>SoltarObjeto()</code> libera la referencia y asigna damping de liberación.</p>
+</section>
+
+<section class="card" id="escena">
+<div class="kicker">03 · Preparación en Unity</div><h2>Configuración de la escena</h2>
+<h3>A. Cada pieza recogible</h3>
+<ul>
+<li>Añade <code>PiezaMontaje1</code> al objeto raíz de la pieza.</li>
+<li>Añade un <code>Rigidbody</code> y uno o varios colliders. Es recomendable que el Rigidbody y <code>PiezaMontaje1</code> estén en el mismo objeto raíz.</li>
+<li>Asigna el tag <code>Interactuable</code> al GameObject que contiene el Rigidbody, porque el raycast comprueba el tag del Rigidbody.</li>
+<li>Selecciona <code>tipoDePieza</code> en el Inspector.</li>
+<li>Deja <code>estaMontada</code> desactivado al iniciar.</li>
+</ul>
+<h3>B. Cada punto de montaje</h3>
+<ul>
+<li>Crea un GameObject para el punto y añade un collider que cubra el área de montaje.</li>
+<li>Activa <code>Is Trigger</code> en ese collider.</li>
+<li>Añade <code>PuntoMontaje1</code>.</li>
+<li>Asigna <code>tipoAnclaje</code> con el tipo que debe aceptar.</li>
+<li>Crea un objeto hijo vacío en la posición y orientación exactas de instalación y asígnalo a <code>puntoAnclaje</code>.</li>
+<li>Asigna el objeto del jugador que contiene <code>SistemaInteraccion</code> al campo <code>sistemaInteraccion</code>.</li>
+<li>Deja <code>piezaDetectada</code> y <code>piezaInstalada</code> vacíos al comenzar. El array <code>objetosEnAnclajes</code> puede empezar vacío.</li>
+</ul>
+<h3>C. Jugador</h3>
+<ul>
+<li>Añade <code>SistemaInteraccion</code> al jugador.</li>
+<li>Asigna la cámara del jugador, o deja el campo vacío si esa cámara está etiquetada como <code>MainCamera</code>.</li>
+<li>Asigna los cuatro textos <code>TextMeshProUGUI</code> a sus campos correspondientes.</li>
+<li>Configura <code>capasParaRaycast</code> para incluir las capas de las piezas interactuables.</li>
+<li>Asigna <code>puntoDeSujecion</code> si quieres controlar manualmente dónde se sostiene la pieza. Si queda vacío, el script crea uno a dos unidades delante de la cámara.</li>
+<li>Asigna todos los puntos de montaje a <code>puntosMontaje</code>, o deja el array vacío para que se busquen automáticamente al iniciar.</li>
+</ul>
+<div class="note warning"><strong>Física de triggers:</strong> para recibir <code>OnTriggerEnter</code> y <code>OnTriggerExit</code>, los colliders deben solaparse y al menos uno de los objetos implicados debe tener Rigidbody. Revisa también que las capas puedan interactuar en la matriz de colisiones.</div>
+</section>
+
+<section class="card" id="flujo">
+<div class="kicker">04 · Controles y flujo</div><h2>Cómo se utiliza durante el juego</h2>
+<table><tr><th>Acción</th><th>Control</th><th>Resultado</th></tr>
+<tr><td>Recoger una pieza</td><td><span class="tag">F</span></td><td>Apunta a una pieza libre con tag <code>Interactuable</code> y pulsa F.</td></tr>
+<tr><td>Soltar una pieza</td><td><span class="tag">F</span></td><td>Con una pieza agarrada, pulsa F para liberarla.</td></tr>
+<tr><td>Montar</td><td><span class="tag">G</span></td><td>Con la pieza correcta agarrada y dentro del trigger compatible, pulsa G.</td></tr>
+<tr><td>Desmontar</td><td><span class="tag">G</span></td><td>Apunta a una pieza instalada y pulsa G. Solo debe desmontarse la pieza cuyo Rigidbody está siendo mirado.</td></tr></table>
+<h3>Secuencia de montaje</h3>
+<ol>
+<li>El collider de la pieza entra en el trigger del anclaje.</li>
+<li><code>OnTriggerEnter</code> obtiene <code>PiezaMontaje1</code> desde el collider o sus padres.</li>
+<li>Si no está montada y su tipo coincide con el anclaje, el punto guarda la referencia en <code>piezaDetectada</code> y activa <code>inTrigger</code>.</li>
+<li><code>SistemaInteraccion</code> recorre <code>puntosMontaje</code> y muestra «Montar» si la pieza que está agarrada es la misma que detectó uno de los puntos.</li>
+<li>Al pulsar G, el punto vuelve a comprobar la identidad de la pieza y el tipo, guarda los datos físicos y la instala.</li>
+<li>El sistema suelta el objeto de la mano.</li>
+</ol>
+<h3>Secuencia de desmontaje</h3>
+<ol>
+<li>El raycast detecta una pieza montada y guarda su Rigidbody en <code>piezaMirada</code>.</li>
+<li>Al pulsar G, cada punto comprueba si su pieza instalada corresponde al Rigidbody mirado.</li>
+<li>El punto encuentra el registro de esa pieza en <code>objetosEnAnclajes</code>.</li>
+<li>Separa la pieza, restaura los valores físicos guardados, cambia <code>estaMontada</code> a <code>false</code> y elimina el registro.</li>
+</ol>
+</section>
+
+<section class="card" id="ampliar">
+<div class="kicker">05 · Ampliación</div><h2>Añadir una nueva pieza o anclaje</h2>
+<p>Para añadir otra pieza de una categoría ya existente, no hace falta modificar los enums:</p>
+<ol>
+<li>Prepara el GameObject con Rigidbody, collider, tag <code>Interactuable</code> y <code>PiezaMontaje1</code>.</li>
+<li>Selecciona su categoría en <code>tipoDePieza</code>.</li>
+<li>Crea un punto de montaje con collider trigger y <code>PuntoMontaje1</code>.</li>
+<li>Selecciona la misma categoría en <code>tipoAnclaje</code>.</li>
+<li>Asigna el Transform de colocación y el <code>SistemaInteraccion</code> del jugador.</li>
+</ol>
+<p>Para crear una categoría totalmente nueva, añade el mismo identificador a las dos enumeraciones: <code>PiezaMontaje1.TiposPieza</code> y <code>PuntoMontaje1.TipoDeAnclaje</code>, manteniendo el mismo orden de valores. El código utiliza una conversión entre enums por su índice, por lo que el orden debe coincidir.</p>
+</section>
+
+<section class="card" id="avisos">
+<div class="kicker">06 · Comprobaciones y limitaciones de la versión compartida</div><h2>Notas técnicas importantes</h2>
+<div class="note warning"><strong>1. Referencia a SistemaInteraccion:</strong> en <code>Start()</code> de <code>PuntoMontaje1</code> se ejecuta <code>sistemaInteraccion = sistemaInteraccion.GetComponent&lt;SistemaInteraccion&gt;()</code>. Esto presupone que el campo ya está asignado en el Inspector. Si está vacío, dará un error. Asigna el controlador en cada punto antes de ejecutar.</div>
+<div class="note warning"><strong>2. Rigidbody en el mismo objeto:</strong> el montaje obtiene el Rigidbody con <code>GetComponentInParent&lt;Rigidbody&gt;()</code>, pero la comprobación para desmontar compara con <code>piezaInstalada.GetComponent&lt;Rigidbody&gt;()</code>. Para que coincidan, coloca Rigidbody y PiezaMontaje1 en el mismo GameObject raíz. Si no, habrá que unificar la forma de obtener el Rigidbody.</div>
+<div class="note warning"><strong>3. El registro guarda posición y padre, pero no los restaura:</strong> la versión actual conserva <code>padreOriginal</code>, <code>posicionOriginal</code> y <code>rotacionOriginal</code>, pero <code>DesmontarPieza()</code> separa la pieza con <code>SetParent(null, true)</code> y la deja donde estaba instalada. Esto es intencionado si se quiere que caiga o permanezca en el lugar del anclaje. Si se desea devolverla a su ubicación anterior, hay que restaurar explícitamente esos tres datos.</div>
+<div class="note warning"><strong>4. Estado físico al desmontar:</strong> se restauran gravedad, kinematic, detección de colisiones, damping y velocidades capturadas antes del montaje. Las velocidades guardadas pueden ser antiguas; si se prefiere que la pieza salga quieta, asigna <code>Vector3.zero</code> a ambas velocidades en vez de restaurarlas.</div>
+<div class="note warning"><strong>5. Varios colliders por pieza:</strong> <code>OnTriggerExit</code> limpia <code>piezaDetectada</code> cuando sale un collider de esa pieza. Si la pieza tiene varios colliders, uno podría salir mientras otro sigue dentro del trigger. En ese caso conviene contar solapamientos o comprobar si quedan otros colliders dentro.</div>
+<div class="note warning"><strong>6. Doble llamada de tecla G:</strong> en el <code>Update()</code> compartido se comprueba G al principio y luego se vuelve a incluir la misma condición en el bloque de montaje. Funciona porque la primera comprobación permite continuar cuando G está pulsada, pero la condición interior es redundante. Se puede simplificar más adelante sin cambiar la lógica.</div>
+<div class="note"><strong>7. Campos que ya no son centrales:</strong> <code>montajeClass</code> permanece en <code>SistemaInteraccion</code> como referencia heredada, pero la visualización de «Montar» usa el array <code>puntosMontaje</code>. <code>mostrarTextoMontar</code> también se modifica desde los puntos, aunque el bloque de interfaz actual calcula <code>puedeMontar</code> recorriendo el array. No son necesarios para esa comprobación concreta.</div>
+<h3>Diagnóstico rápido</h3>
+<table><tr><th>Síntoma</th><th>Revisar</th></tr>
+<tr><td>No aparece el log del trigger</td><td>Collider con Is Trigger, Rigidbody, solapamiento y matriz de capas.</td></tr>
+<tr><td>Hay log, pero no se detecta pieza</td><td>Que <code>PiezaMontaje1</code> esté en el collider o en uno de sus padres; tipo compatible y <code>estaMontada == false</code>.</td></tr>
+<tr><td>El trigger detecta, pero no aparece «Montar»</td><td>Que <code>objetoAgarrado</code> corresponda a esa misma pieza; que el punto esté en <code>puntosMontaje</code>; que <code>piezaDetectada</code> siga asignada.</td></tr>
+<tr><td>Se monta una pieza distinta</td><td>Comprobación de identidad <code>piezaAgarrada == piezaDetectada</code> dentro de <code>MontarPieza()</code>.</td></tr>
+<tr><td>No se desmonta la pieza mirada</td><td>Que el raycast alcance su collider, que el Rigidbody detectado sea el mismo que el registrado y que la comparación del Rigidbody use el mismo objeto raíz.</td></tr></table>
+</section>
+
+<section class="card">
+<div class="kicker">Referencia de mantenimiento</div><h2>Resumen de responsabilidades</h2>
+<ul>
+<li><strong>PiezaMontaje1:</strong> identidad y estado de cada pieza.</li>
+<li><strong>PuntoMontaje1:</strong> trigger, compatibilidad, montaje, registro y desmontaje.</li>
+<li><strong>SistemaInteraccion:</strong> selección por cámara, recogida, sujeción, teclas y textos.</li>
+</ul>
+<p>La arquitectura permite añadir más puntos de montaje manteniendo un único controlador de interacción en el jugador. Cada punto mantiene su propio estado y el controlador consulta la lista completa de puntos.</p>
+</section>
+</main>
+<footer>Documentación basada en los tres archivos C# proporcionados. Los nombres de campos y métodos se conservan para facilitar la comparación con el proyecto de Unity.</footer>
+</body></html>

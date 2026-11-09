@@ -34,11 +34,18 @@ public class SistemaInteraccion : MonoBehaviour
 
     public bool isAgarrado = false;
 
+    public Rigidbody piezaMirada;
 
+    public bool mostrarTextoMontar;
+
+    public PuntoMontaje1[] puntosMontaje;
 
     void Start()
     {
-
+        if (puntosMontaje == null || puntosMontaje.Length == 0)
+        {
+            puntosMontaje = FindObjectsByType<PuntoMontaje1>(FindObjectsSortMode.None);
+        }
 
         if (camaraJugador == null)
             camaraJugador = Camera.main;
@@ -57,13 +64,13 @@ public class SistemaInteraccion : MonoBehaviour
         if (textoInteractuar != null)
             textoInteractuar.gameObject.SetActive(false);
 
-        if (montarText != null) 
+        if (montarText != null)
             montarText.gameObject.SetActive(false);
 
-        if(textoInteractuarSoltar != null) 
+        if (textoInteractuarSoltar != null)
             textoInteractuarSoltar.gameObject.SetActive(false);
 
-        if(desmontarText != null)
+        if (desmontarText != null)
         {
             desmontarText.gameObject.SetActive(false);
         }
@@ -96,7 +103,7 @@ public class SistemaInteraccion : MonoBehaviour
             textoInteractuar.gameObject.SetActive(false);
         }
         if (desmontarText != null)
-            desmontarText.gameObject.SetActive (false);
+            desmontarText.gameObject.SetActive(false);
     }
 
     public void mostrarTexto(TextMeshProUGUI texto)
@@ -118,48 +125,58 @@ public class SistemaInteraccion : MonoBehaviour
 
     void Update()
     {
+
+
+
         esconderTodosTextos();
 
-        
+        mostrarTextoMontar = false;
+
+        esconderTodosTextos();
 
         if (objetoAgarrado != null)
         {
-
             esconderTexto(montarText);
             esconderTexto(textoInteractuar);
 
             mostrarTexto(textoInteractuarSoltar);
 
-            if (montajeClass != null && montajeClass.inTrigger)
-            {
-                if (montarText != null)
-                {
-                    montarText.gameObject.SetActive(true);
-                }
-                else
-                {
-                }
+            bool puedeMontar = false;
 
+            PiezaMontaje1 piezaAgarrada =
+                objetoAgarrado.GetComponentInParent<PiezaMontaje1>();
+
+            if (piezaAgarrada != null)
+            {
+                foreach (PuntoMontaje1 punto in puntosMontaje)
+                {
+                    if (punto == null) continue;
+
+                    if (punto.inTrigger &&
+                        punto.piezaDetectada == piezaAgarrada)
+                    {
+                        puedeMontar = true;
+                        break;
+                    }
+                }
+            }
+
+            if (puedeMontar)
+            {
                 esconderTexto(textoInteractuar);
                 esconderTexto(textoInteractuarSoltar);
+                mostrarTexto(montarText);
             }
-           
 
-
-
+            // F = soltar la pieza
             if (Input.GetKeyDown(KeyCode.F))
             {
-                PiezaMontaje1 pieza = objetoAgarrado.GetComponentInParent<PiezaMontaje1>();
-
-                if (pieza == null || !pieza.estaMontada)
-                {
-                    SoltarObjeto();
-                }
                 SoltarObjeto();
             }
 
             return;
-        }
+    
+    }
 
         Ray ray = camaraJugador.ViewportPointToRay(
             new Vector3(0.5f, 0.5f, 0));
@@ -176,6 +193,8 @@ public class SistemaInteraccion : MonoBehaviour
 
                     mirandoMontada = true;
 
+                    piezaMirada = rb;
+
                     esconderTexto(textoInteractuar);
 
                     esconderTexto(textoInteractuarSoltar);
@@ -187,6 +206,7 @@ public class SistemaInteraccion : MonoBehaviour
                 }
                 else
                 {
+                    piezaMirada = null;
                     mirandoMontada = false;
 
                     esconderTexto(montarText);
@@ -224,23 +244,23 @@ public class SistemaInteraccion : MonoBehaviour
     }
 
     void FixedUpdate()
-    {
-        if (objetoAgarrado == null)
-            return;
+        {
+            if (objetoAgarrado == null)
+                return;
 
-        Vector3 direccion =
-            puntoDeSujecion.position -
-            objetoAgarrado.worldCenterOfMass;
+            Vector3 direccion =
+                puntoDeSujecion.position -
+                objetoAgarrado.worldCenterOfMass;
 
-        Vector3 velocidad = direccion * velocidadAtraccion;
+            Vector3 velocidad = direccion * velocidadAtraccion;
 
-        objetoAgarrado.linearVelocity =
-            Vector3.ClampMagnitude(velocidad, velocidadMaxima);
-    }
+            objetoAgarrado.linearVelocity =
+                Vector3.ClampMagnitude(velocidad, velocidadMaxima);
+        }
 
     public void AgarrarObjeto(Rigidbody rb)
     {
-        isAgarrado = true;
+            isAgarrado = true;
             esconderTexto(textoInteractuar);
             mostrarTexto(textoInteractuarSoltar);
 
@@ -249,8 +269,6 @@ public class SistemaInteraccion : MonoBehaviour
             detectCollisionsOriginal = rb.detectCollisions;
             dampingOriginal = rb.linearDamping;
             angularDampingOriginal = rb.angularDamping;
-
-
 
 
             rb.linearDamping = 5f;
