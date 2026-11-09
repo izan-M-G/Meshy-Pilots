@@ -63,24 +63,15 @@ public class SistemaInteraccion : MonoBehaviour
             montajeClass = FindFirstObjectByType<PuntoMontaje1>();
         }
 
-        if (textoInteractuar != null)
-            textoInteractuar.gameObject.SetActive(false);
+        esconderTexto(textoInteractuar);
 
-        if (montarText != null)
-            montarText.gameObject.SetActive(false);
+        esconderTexto(montarText);
 
-        if (textoInteractuarSoltar != null)
-            textoInteractuarSoltar.gameObject.SetActive(false);
+        esconderTexto(textoInteractuarSoltar);
 
-        if (desmontarText != null)
-        {
-            desmontarText.gameObject.SetActive(false);
-        }
+        esconderTexto(desmontarText);
 
-        if (textoInteraccionE != null)
-        {
-            textoInteraccionE.gameObject.SetActive(false);
-        }
+        esconderTexto(textoInteraccionE);
 
         if (puntoDeSujecion == null)
         {
@@ -191,7 +182,6 @@ public class SistemaInteraccion : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit,
             distanciaDeInteraccion, capasParaRaycast))
         {
-            // Comprobar primero si estamos mirando una puerta.
             Puerta puerta = hit.collider.gameObject.GetComponentInParent<Puerta>();
 
             if (puerta != null)
@@ -292,10 +282,8 @@ public class SistemaInteraccion : MonoBehaviour
 
         Rigidbody rb = objetoAgarrado;
 
-        // Liberar el objeto de la sujecion
         objetoAgarrado = null;
 
-        // Quitar resistencia al movimiento
         rb.linearDamping = 0f;
         rb.angularDamping = 0.05f;
 

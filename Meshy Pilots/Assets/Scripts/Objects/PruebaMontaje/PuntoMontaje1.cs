@@ -81,7 +81,6 @@ public class PuntoMontaje1 : MonoBehaviour
             inTrigger = true;
         }
 
-        Debug.Log("PIEZA DETECTADA EN: " + gameObject.name);
 
 
 
@@ -122,7 +121,6 @@ public class PuntoMontaje1 : MonoBehaviour
 
     }
 
-    // Update is called once per frame
     void Update()
     {
 
