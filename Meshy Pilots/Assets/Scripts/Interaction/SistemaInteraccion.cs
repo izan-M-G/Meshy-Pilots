@@ -18,6 +18,8 @@ public class SistemaInteraccion : MonoBehaviour
 
     public TextMeshProUGUI desmontarText;
 
+    public TextMeshProUGUI textoInteraccionE;
+
     [Header("Sujecion")]
     public Transform puntoDeSujecion;
     public float velocidadAtraccion = 12f;
@@ -75,6 +77,10 @@ public class SistemaInteraccion : MonoBehaviour
             desmontarText.gameObject.SetActive(false);
         }
 
+        if (textoInteraccionE != null)
+        {
+            textoInteraccionE.gameObject.SetActive(false);
+        }
 
         if (puntoDeSujecion == null)
         {
@@ -85,7 +91,6 @@ public class SistemaInteraccion : MonoBehaviour
             puntoDeSujecion.localPosition = new Vector3(0, 0, 2);
         }
     }
-
 
     void esconderTodosTextos()
     {
@@ -98,12 +103,19 @@ public class SistemaInteraccion : MonoBehaviour
         {
             montarText.gameObject.SetActive(false);
         }
+
         if (textoInteractuar != null)
         {
             textoInteractuar.gameObject.SetActive(false);
         }
+
         if (desmontarText != null)
             desmontarText.gameObject.SetActive(false);
+
+        if (textoInteraccionE != null)
+        {
+            textoInteraccionE.gameObject.SetActive(false);
+        }
     }
 
     public void mostrarTexto(TextMeshProUGUI texto)
@@ -112,7 +124,6 @@ public class SistemaInteraccion : MonoBehaviour
         {
             texto.gameObject.SetActive(true);
         }
-
     }
 
     public void esconderTexto(TextMeshProUGUI texto)
@@ -125,9 +136,6 @@ public class SistemaInteraccion : MonoBehaviour
 
     void Update()
     {
-
-
-
         esconderTodosTextos();
 
         mostrarTextoMontar = false;
@@ -175,8 +183,7 @@ public class SistemaInteraccion : MonoBehaviour
             }
 
             return;
-    
-    }
+        }
 
         Ray ray = camaraJugador.ViewportPointToRay(
             new Vector3(0.5f, 0.5f, 0));
@@ -184,13 +191,30 @@ public class SistemaInteraccion : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit,
             distanciaDeInteraccion, capasParaRaycast))
         {
+            // Comprobar primero si estamos mirando una puerta.
+            Puerta puerta = hit.collider.gameObject.GetComponentInParent<Puerta>();
+
+            if (puerta != null)
+            {
+                mirandoMontada = false;
+                piezaMirada = null;
+
+                mostrarTexto(textoInteraccionE);
+
+                if (Input.GetKeyDown(KeyCode.E))
+                {
+                    puerta.Interactuar();
+                }
+
+                return;
+            }
+
             Rigidbody rb = hit.collider.GetComponentInParent<Rigidbody>();
 
-            if (rb != null && rb.CompareTag("Interactuable") )
+            if (rb != null && rb.CompareTag("Interactuable"))
             {
                 if (rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
                 {
-
                     mirandoMontada = true;
 
                     piezaMirada = rb;
@@ -200,9 +224,6 @@ public class SistemaInteraccion : MonoBehaviour
                     esconderTexto(textoInteractuarSoltar);
 
                     mostrarTexto(desmontarText);
-
-                    
-
                 }
                 else
                 {
@@ -217,66 +238,51 @@ public class SistemaInteraccion : MonoBehaviour
 
                     if (Input.GetKeyDown(KeyCode.F) && !rb.GetComponentInParent<PiezaMontaje1>().estaMontada)
                         AgarrarObjeto(rb);
-
-
                 }
-
             }
             else
             {
                 mirandoMontada = false;
-
+                piezaMirada = null;
             }
-
-
-
-
-
         }
         else
         {
             mirandoMontada = false;
-
+            piezaMirada = null;
         }
-
-
-
     }
 
     void FixedUpdate()
-        {
-            if (objetoAgarrado == null)
-                return;
+    {
+        if (objetoAgarrado == null)
+            return;
 
-            Vector3 direccion =
-                puntoDeSujecion.position -
-                objetoAgarrado.worldCenterOfMass;
+        Vector3 direccion =
+            puntoDeSujecion.position -
+            objetoAgarrado.worldCenterOfMass;
 
-            Vector3 velocidad = direccion * velocidadAtraccion;
+        Vector3 velocidad = direccion * velocidadAtraccion;
 
-            objetoAgarrado.linearVelocity =
-                Vector3.ClampMagnitude(velocidad, velocidadMaxima);
-        }
+        objetoAgarrado.linearVelocity =
+            Vector3.ClampMagnitude(velocidad, velocidadMaxima);
+    }
 
     public void AgarrarObjeto(Rigidbody rb)
     {
-            isAgarrado = true;
-            esconderTexto(textoInteractuar);
-            mostrarTexto(textoInteractuarSoltar);
+        isAgarrado = true;
+        esconderTexto(textoInteractuar);
+        mostrarTexto(textoInteractuarSoltar);
 
-            objetoAgarrado = rb;
+        objetoAgarrado = rb;
 
-            detectCollisionsOriginal = rb.detectCollisions;
-            dampingOriginal = rb.linearDamping;
-            angularDampingOriginal = rb.angularDamping;
+        detectCollisionsOriginal = rb.detectCollisions;
+        dampingOriginal = rb.linearDamping;
+        angularDampingOriginal = rb.angularDamping;
 
-
-            rb.linearDamping = 5f;
-            rb.angularDamping = 5f;
-        
-
+        rb.linearDamping = 5f;
+        rb.angularDamping = 5f;
     }
-
 
     public void SoltarObjeto()
     {
@@ -289,21 +295,12 @@ public class SistemaInteraccion : MonoBehaviour
         // Liberar el objeto de la sujecion
         objetoAgarrado = null;
 
-
-
         // Quitar resistencia al movimiento
         rb.linearDamping = 0f;
         rb.angularDamping = 0.05f;
 
-
         esconderTodosTextos();
-
     }
-
-
-    
-
-
 
     void OnDisable()
     {
@@ -315,8 +312,4 @@ public class SistemaInteraccion : MonoBehaviour
     {
         get { return objetoAgarrado; }
     }
-
-   
-
-   
 }
