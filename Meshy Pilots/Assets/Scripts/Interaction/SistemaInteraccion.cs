@@ -264,6 +264,8 @@ public class SistemaInteraccion : MonoBehaviour
         esconderTexto(textoInteractuar);
         mostrarTexto(textoInteractuarSoltar);
 
+        rb.gameObject.layer = 11;
+
         objetoAgarrado = rb;
 
         detectCollisionsOriginal = rb.detectCollisions;
@@ -272,6 +274,8 @@ public class SistemaInteraccion : MonoBehaviour
 
         rb.linearDamping = 5f;
         rb.angularDamping = 5f;
+
+
     }
 
     public void SoltarObjeto()
@@ -281,6 +285,7 @@ public class SistemaInteraccion : MonoBehaviour
             return;
 
         Rigidbody rb = objetoAgarrado;
+        rb.gameObject.layer = 0;
 
         objetoAgarrado = null;
 

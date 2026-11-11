@@ -18,8 +18,8 @@ TagManager:
   - Montaje
   - PiezasMontadas
   - Avion
-  - 
-  - 
+  - NoPlayerCollider
+  - Player
   - 
   - 
   - 
