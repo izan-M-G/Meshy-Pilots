@@ -1,7 +1,8 @@
 
 using UnityEngine;
+using Unity.Netcode;
 
-public class Puerta : MonoBehaviour
+public class Puerta : NetworkBehaviour
 {
     [Header("Configuración")]
     public Transform puerta;
@@ -14,7 +15,14 @@ public class Puerta : MonoBehaviour
     private Quaternion rotacionCerrada;
     private Quaternion rotacionAbierta;
 
-    void Start()
+    private NetworkVariable<bool> estadoPuerta =
+        new NetworkVariable<bool>(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
+    private void Start()
     {
         if (puerta == null)
             puerta = transform;
@@ -22,11 +30,30 @@ public class Puerta : MonoBehaviour
         rotacionCerrada = puerta.localRotation;
 
         rotacionAbierta = rotacionCerrada *
-     Quaternion.AngleAxis(anguloAbierto, Vector3.up);
+            Quaternion.AngleAxis(anguloAbierto, Vector3.up);
+
+        estaAbierta = estadoPuerta.Value;
     }
 
-    void Update()
+    public override void OnNetworkSpawn()
     {
+        estadoPuerta.OnValueChanged += ActualizarEstado;
+
+        estaAbierta = estadoPuerta.Value;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        estadoPuerta.OnValueChanged -= ActualizarEstado;
+    }
+
+    private void Update()
+    {
+        if (puerta == null)
+            return;
+
+        estaAbierta = estadoPuerta.Value;
+
         Quaternion objetivo = estaAbierta
             ? rotacionAbierta
             : rotacionCerrada;
@@ -40,6 +67,20 @@ public class Puerta : MonoBehaviour
 
     public void Interactuar()
     {
-        estaAbierta = !estaAbierta;
+        if (!IsSpawned)
+            return;
+
+        SolicitarCambiarEstadoRpc();
+    }
+
+    [Rpc(SendTo.Server, RequireOwnership = false)]
+    private void SolicitarCambiarEstadoRpc()
+    {
+        estadoPuerta.Value = !estadoPuerta.Value;
+    }
+
+    private void ActualizarEstado(bool anterior, bool nuevo)
+    {
+        estaAbierta = nuevo;
     }
 }

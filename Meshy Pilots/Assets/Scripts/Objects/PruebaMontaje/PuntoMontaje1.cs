@@ -1,18 +1,12 @@
-using Unity.VisualScripting;
+
 using UnityEngine;
-
-
-
-
+using Unity.Netcode;
 
 public class PuntoMontaje1 : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-
     public enum TipoDeAnclaje
     {
         alaIzq, alaDer, ruedaIzq, ruedaDer, motor, helice
-
     }
 
     [System.Serializable]
@@ -22,287 +16,300 @@ public class PuntoMontaje1 : MonoBehaviour
         public TipoDeAnclaje tiposDeAnclaje;
         public Rigidbody rigidbodys;
 
-        [Header("Transformación original")]
         public Transform padreOriginal;
         public Vector3 posicionOriginal;
         public Quaternion rotacionOriginal;
 
-        [Header("Estado físico original")]
         public bool eraKinematic;
         public bool teniaGravedad;
         public bool detectabaColisiones;
-        public Vector3 velocidadOriginal;
-        public Vector3 velocidadAngularOriginal;
+
         public float linearDampingOriginal;
         public float angularDampingOriginal;
+
+        public int layerOriginal;
     }
 
     public TipoDeAnclaje tipoAnclaje;
 
-    public rigidbodysAsociados[] objetosEnAnclajes;
+    public rigidbodysAsociados[] objetosEnAnclajes =
+        new rigidbodysAsociados[0];
 
     public Transform puntoAnclaje;
     public PiezaMontaje1 piezaDetectada;
-
     public PiezaMontaje1 piezaInstalada;
 
     public bool inTrigger;
-
     public Rigidbody piezaMirada;
 
-    public SistemaInteraccion sistemaInteraccion;
+    private NetworkObject avionNetworkObject;
 
-
+    private void Awake()
+    {
+        avionNetworkObject =
+            GetComponentInParent<NetworkObject>();
+    }
 
     private void OnTriggerEnter(Collider other)
     {
+        PiezaMontaje1 pieza =
+            other.GetComponentInParent<PiezaMontaje1>();
 
-
-
-        PiezaMontaje1 piezaMontaje1 = other.GetComponentInParent<PiezaMontaje1>();
-
-
-        if(piezaMontaje1 == null)
-        {
+        if (pieza == null || pieza.estaMontada)
             return;
-        }
 
-        if (piezaMontaje1.estaMontada)
+        if (pieza.tipoDePieza ==
+            (PiezaMontaje1.TiposPieza)tipoAnclaje)
         {
-            return;
-        }
-
-
-
-        if (piezaMontaje1.tipoDePieza == (PiezaMontaje1.TiposPieza)tipoAnclaje )
-        {
-
-            piezaDetectada = piezaMontaje1;
+            piezaDetectada = pieza;
             inTrigger = true;
         }
-
-
-
-
-
-
-
     }
 
     private void OnTriggerExit(Collider other)
     {
+        PiezaMontaje1 pieza =
+            other.GetComponentInParent<PiezaMontaje1>();
 
-        PiezaMontaje1 pieza = other.GetComponentInParent<PiezaMontaje1>();
+        if (pieza == null)
+            return;
 
-        if(pieza == null || pieza.estaMontada)
-        {
-            return; 
-        }
-
-        if(piezaDetectada == pieza)
+        if (piezaDetectada == pieza)
         {
             piezaDetectada = null;
             inTrigger = false;
-
         }
-
-
-
     }
 
-
-
-    void Start()
+    public void MontarDesdeServidor(Rigidbody rb)
     {
-
-        sistemaInteraccion = sistemaInteraccion.GetComponent<SistemaInteraccion>();
-
-
-
-    }
-
-    void Update()
-    {
-
-
-        if (piezaDetectada != null &&
-        sistemaInteraccion.isAgarrado &&
-        sistemaInteraccion.objetoAgarrado != null)
-        {
-            PiezaMontaje1 piezaAgarrada =
-                sistemaInteraccion.objetoAgarrado.GetComponentInParent<PiezaMontaje1>();
-
-            if (piezaAgarrada == piezaDetectada)
-            {
-                sistemaInteraccion.mostrarTextoMontar = true;
-            }
-        }
-
-        if (!Input.GetKeyDown(KeyCode.G)) return;
-
-
-        if (piezaInstalada != null &&
-        sistemaInteraccion.mirandoMontada &&
-        sistemaInteraccion.piezaMirada != null &&
-        objetosEnAnclajes.Length > 0)
-        {
-            if (piezaInstalada.GetComponent<Rigidbody>() == sistemaInteraccion.piezaMirada)
-            {
-                DesmontarPieza();
-            }
-        }
-
-        if (piezaDetectada != null &&
-        sistemaInteraccion.isAgarrado &&
-        sistemaInteraccion.objetoAgarrado != null)
-        {
-            PiezaMontaje1 piezaAgarrada =
-                sistemaInteraccion.objetoAgarrado.GetComponentInParent<PiezaMontaje1>();
-
-            if (piezaAgarrada == piezaDetectada &&
-                Input.GetKeyDown(KeyCode.G))
-            {
-                MontarPieza();
-                sistemaInteraccion.SoltarObjeto();
-            }
-        }
-
-
-    }
-
-
-    public void MontarPieza()
-    {
-        if (piezaDetectada == null || sistemaInteraccion.objetoAgarrado == null)
+        if (NetworkManager.Singleton == null ||
+            !NetworkManager.Singleton.IsServer)
             return;
 
-        PiezaMontaje1 piezaAgarrada =
-            sistemaInteraccion.objetoAgarrado.GetComponentInParent<PiezaMontaje1>();
-
-        // Comprobar que la pieza del trigger es la que tenemos agarrada.
-        if (piezaAgarrada != piezaDetectada)
+        if (rb == null || piezaInstalada != null ||
+            puntoAnclaje == null ||
+            avionNetworkObject == null)
             return;
 
-        if (piezaAgarrada.tipoDePieza != (PiezaMontaje1.TiposPieza)tipoAnclaje)
+        PiezaMontaje1 pieza =
+            rb.GetComponentInParent<PiezaMontaje1>();
+
+        if (pieza == null || pieza.estaMontada)
             return;
 
-        if (puntoAnclaje == null)
+        if (pieza.tipoDePieza !=
+            (PiezaMontaje1.TiposPieza)tipoAnclaje)
             return;
 
-        PiezaMontaje1 piezaMontaje1 = piezaAgarrada;
-
-        Rigidbody rb = piezaMontaje1.GetComponentInParent<Rigidbody>();
-
-        if (rb == null)
+        if (piezaDetectada != pieza || !inTrigger)
             return;
 
-        GuardarDatos(piezaMontaje1, rb);
+        NetworkObject piezaNetworkObject =
+            pieza.GetComponent<NetworkObject>();
 
-        piezaMontaje1.transform.SetPositionAndRotation(
-            puntoAnclaje.position,
-            puntoAnclaje.rotation
-        );
+        if (piezaNetworkObject == null)
+            return;
+
+        // Guardamos la configuración ya restaurada.
+        GuardarDatos(pieza, rb);
 
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.isKinematic = true;
         rb.useGravity = false;
 
-        piezaMontaje1.transform.SetParent(transform, true);
+        if (!piezaNetworkObject.TrySetParent(
+            avionNetworkObject, true))
+        {
+            RestaurarFisicas(pieza, rb);
+            EliminarDatos(pieza);
+            return;
+        }
 
-        piezaMontaje1.estaMontada = true;
-        piezaInstalada = piezaMontaje1;
+        pieza.transform.SetPositionAndRotation(
+            puntoAnclaje.position,
+            puntoAnclaje.rotation);
+
+        pieza.EstablecerMontadaDesdeServidor(
+            true,
+            ObtenerIndiceAnclaje(),
+            new NetworkObjectReference(avionNetworkObject));
+
+        piezaInstalada = pieza;
         piezaDetectada = null;
         inTrigger = false;
+
+        Debug.Log("Pieza montada: " + pieza.name);
     }
 
-
-
-    public void DesmontarPieza()
+    public void DesmontarDesdeServidor()
     {
+        if (NetworkManager.Singleton == null ||
+            !NetworkManager.Singleton.IsServer)
+            return;
+
         if (piezaInstalada == null)
             return;
 
-        Rigidbody rbBuscado = sistemaInteraccion.piezaMirada;
+        PiezaMontaje1 pieza = piezaInstalada;
 
-        // Buscamos los datos de la pieza instalada.
         for (int i = 0; i < objetosEnAnclajes.Length; i++)
         {
             rigidbodysAsociados datos = objetosEnAnclajes[i];
 
-            if (datos.rigidbodys != rbBuscado)
+            if (datos.pieza != pieza)
                 continue;
 
-            PiezaMontaje1 pieza = datos.pieza;
             Rigidbody rb = datos.rigidbodys;
 
-            // Separamos la pieza del avión manteniendo su posición actual.
-            pieza.transform.SetParent(null, true);
+            NetworkObject piezaNetworkObject =
+                pieza.GetComponent<NetworkObject>();
 
-            // Recuperamos su configuración física original.
-            rb.detectCollisions = datos.detectabaColisiones;
-            rb.isKinematic = datos.eraKinematic;
-            rb.useGravity = datos.teniaGravedad;
+            if (rb == null || piezaNetworkObject == null)
+                return;
 
-            rb.linearDamping = datos.linearDampingOriginal;
-            rb.angularDamping = datos.angularDampingOriginal;
+            if (!piezaNetworkObject.TryRemoveParent(true))
+            {
+                Debug.LogError(
+                    "No se pudo separar la pieza del avión.");
+                return;
+            }
 
-            rb.linearVelocity = datos.velocidadOriginal;
-            rb.angularVelocity = datos.velocidadAngularOriginal;
+            if (datos.padreOriginal != null)
+            {
+                pieza.transform.SetParent(
+                    datos.padreOriginal, true);
+            }
 
-            pieza.estaMontada = false;
+            // Conservamos la posición actual del anclaje.
+            // No devolvemos la pieza a su posición inicial.
+            pieza.transform.SetPositionAndRotation(
+                pieza.transform.position,
+                pieza.transform.rotation);
+
+            RestaurarFisicas(datos, rb);
+
+            pieza.EstablecerMontadaDesdeServidor(false);
 
             piezaInstalada = null;
             piezaMirada = null;
+            piezaDetectada = null;
+            inTrigger = false;
 
-            // Eliminamos el registro utilizado.
-            objetosEnAnclajes[i] = default;
+            EliminarDatos(pieza);
 
             Debug.Log("Pieza desmontada: " + pieza.name);
-
             return;
         }
 
-        Debug.LogWarning("No se encontraron los datos del Rigidbody de la pieza.");
+        Debug.LogWarning(
+            "No se encontraron los datos originales de la pieza.");
     }
 
-    private void GuardarDatos(PiezaMontaje1 pieza, Rigidbody rb)
+    private void RestaurarFisicas(
+        PiezaMontaje1 pieza, Rigidbody rb)
     {
-        // Evitar guardar dos veces la misma pieza.
         for (int i = 0; i < objetosEnAnclajes.Length; i++)
         {
-            if (objetosEnAnclajes[i].rigidbodys == rb)
+            if (objetosEnAnclajes[i].pieza == pieza)
+            {
+                RestaurarFisicas(objetosEnAnclajes[i], rb);
                 return;
+            }
+        }
+    }
+
+    private void RestaurarFisicas(
+        rigidbodysAsociados datos, Rigidbody rb)
+    {
+        rb.isKinematic = datos.eraKinematic;
+        rb.useGravity = datos.teniaGravedad;
+        rb.detectCollisions = datos.detectabaColisiones;
+
+        rb.linearDamping = datos.linearDampingOriginal;
+        rb.angularDamping = datos.angularDampingOriginal;
+
+        rb.gameObject.layer = datos.layerOriginal;
+
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+    }
+
+    private int ObtenerIndiceAnclaje()
+    {
+        if (avionNetworkObject == null)
+            return -1;
+
+        PuntoMontaje1[] puntos =
+            avionNetworkObject.GetComponentsInChildren<PuntoMontaje1>(true);
+
+        for (int i = 0; i < puntos.Length; i++)
+        {
+            if (puntos[i] == this)
+                return i;
         }
 
-        rigidbodysAsociados datos = new rigidbodysAsociados();
+        return -1;
+    }
+
+    private void GuardarDatos(
+        PiezaMontaje1 pieza, Rigidbody rb)
+    {
+        rigidbodysAsociados datos =
+            new rigidbodysAsociados();
 
         datos.pieza = pieza;
         datos.tiposDeAnclaje = tipoAnclaje;
         datos.rigidbodys = rb;
 
-        // Guardamos la transformación antes de montarla.
         datos.padreOriginal = pieza.transform.parent;
         datos.posicionOriginal = pieza.transform.position;
         datos.rotacionOriginal = pieza.transform.rotation;
 
-        // Guardamos el estado físico original.
         datos.eraKinematic = rb.isKinematic;
         datos.teniaGravedad = rb.useGravity;
         datos.detectabaColisiones = rb.detectCollisions;
-        datos.velocidadOriginal = rb.linearVelocity;
-        datos.velocidadAngularOriginal = rb.angularVelocity;
+
         datos.linearDampingOriginal = rb.linearDamping;
         datos.angularDampingOriginal = rb.angularDamping;
 
-        // Ampliamos el array para guardar el nuevo registro.
-        System.Array.Resize(ref objetosEnAnclajes, objetosEnAnclajes.Length + 1);
+        datos.layerOriginal = rb.gameObject.layer;
 
-        // Guardamos el struct en el array.
-        objetosEnAnclajes[objetosEnAnclajes.Length - 1] = datos;
+        System.Array.Resize(
+            ref objetosEnAnclajes,
+            objetosEnAnclajes.Length + 1);
 
-        Debug.Log("Datos guardados: " + pieza.name);
+        objetosEnAnclajes[
+            objetosEnAnclajes.Length - 1] = datos;
     }
 
+    private void EliminarDatos(PiezaMontaje1 pieza)
+    {
+        for (int i = 0; i < objetosEnAnclajes.Length; i++)
+        {
+            if (objetosEnAnclajes[i].pieza != pieza)
+                continue;
 
+            var nuevaLista =
+                new rigidbodysAsociados[
+                    objetosEnAnclajes.Length - 1];
+
+            int indiceNuevo = 0;
+
+            for (int j = 0; j < objetosEnAnclajes.Length; j++)
+            {
+                if (j == i)
+                    continue;
+
+                nuevaLista[indiceNuevo] =
+                    objetosEnAnclajes[j];
+
+                indiceNuevo++;
+            }
+
+            objetosEnAnclajes = nuevaLista;
+            return;
+        }
+    }
 }

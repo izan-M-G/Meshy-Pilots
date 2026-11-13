@@ -1,63 +1,50 @@
-using System.Runtime.CompilerServices;
+
 using UnityEngine;
 
 public class HeadMovement : MonoBehaviour
 {
-
-
-    public float sensibilidad = 2.0f;
-    public Transform cuerpoJugador;
+    public float sensibilidad = 2f;
 
     private float rotacionX = 0f;
+    private float rotacionYLocal;
 
-    private Rigidbody rbJugador;
-
-
-
-
+    private MovementPlayer movimientoJugador;
 
     void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
+        movimientoJugador =
+            GetComponentInParent<MovementPlayer>();
 
-        if (cuerpoJugador != null)
-        {
-
-            rbJugador = cuerpoJugador.GetComponent<Rigidbody>();
-
-
-        }
+        // Guardamos la orientación inicial de la cámara.
+        rotacionYLocal = transform.eulerAngles.y;
     }
 
-    // Update is called once per frame
     void Update()
     {
+        if (movimientoJugador == null)
+            return;
 
-        float mouseX = Input.GetAxis("Mouse X") * sensibilidad;
-        float mouseY = Input.GetAxis("Mouse Y") * sensibilidad;
+        float mouseX =
+            Input.GetAxis("Mouse X") * sensibilidad;
 
+        float mouseY =
+            Input.GetAxis("Mouse Y") * sensibilidad;
 
+        // Giro vertical local.
         rotacionX -= mouseY;
-        rotacionX = Mathf.Clamp(rotacionX, -90, 90);
-        transform.localRotation = Quaternion.Euler(rotacionX,0f,0f);
+        rotacionX = Mathf.Clamp(rotacionX, -90f, 90f);
 
-       if(rbJugador != null)
-        {
+        // Giro horizontal local e inmediato.
+        rotacionYLocal += mouseX;
 
-            Quaternion rotacionAdicional = Quaternion.Euler(Vector3.up * mouseX);
+        transform.rotation = Quaternion.Euler(
+            rotacionX,
+            rotacionYLocal,
+            0f
+        );
 
-            rbJugador.MoveRotation(rbJugador.rotation * rotacionAdicional);
-
-
-        }
-        else
-        {
-            cuerpoJugador.Rotate(Vector3.up * mouseX);
-        }
-
-
-
-
-
+        // Enviamos también el giro al servidor
+        // para sincronizar el cuerpo del jugador.
+        movimientoJugador.AplicarGiro(mouseX);
     }
 }

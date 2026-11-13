@@ -1,22 +1,17 @@
-using System;
+
+using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
-public class MovementPlayer : MonoBehaviour
+public class MovementPlayer : NetworkBehaviour
 {
-
-
-    //movimiento , constantes;
+    [Header("Movimiento")]
     public float speed = 5f;
+    public float velocidadCorrer = 7f;
+
     private float horizontalInput;
     private float forwardInput;
 
-    public float velocidadCorrer = 7f;
-
-
-
-    //salto
     [Header("Salto")]
     public float jumpForce = 5f;
     public Transform groundCheck;
@@ -27,52 +22,105 @@ public class MovementPlayer : MonoBehaviour
     private Rigidbody rb;
     private bool puedeSaltar;
     private bool saltoSolicitado;
+    private float rotacionLocal;
 
-    void Start()
+    private NetworkVariable<float> rotacionSolicitada =
+        new NetworkVariable<float>(
+            0f,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Owner
+        );
+
+    private HeadMovement headMovement;
+    private Camera camaraJugador;
+    private AudioListener audioJugador;
+
+    private NetworkVariable<Vector2> inputMovimiento =
+        new NetworkVariable<Vector2>(
+            Vector2.zero,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Owner
+        );
+
+    private NetworkVariable<bool> correr =
+        new NetworkVariable<bool>(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Owner
+        );
+
+    public override void OnNetworkSpawn()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+
+        rotacionLocal = transform.eulerAngles.y;
+
+        if (IsOwner)
+            rotacionSolicitada.Value = rotacionLocal;
+
+        headMovement = GetComponentInChildren<HeadMovement>(true);
+        camaraJugador = GetComponentInChildren<Camera>(true);
+        audioJugador = GetComponentInChildren<AudioListener>(true);
+
+        if (headMovement != null)
+            headMovement.enabled = IsOwner;
+
+        if (camaraJugador != null)
+            camaraJugador.enabled = IsOwner;
+
+        if (audioJugador != null)
+            audioJugador.enabled = IsOwner;
+
+        if (IsOwner)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 
-    void Update()
+    private void Update()
     {
+        if (!IsOwner) return;
 
         horizontalInput = Input.GetAxis("Horizontal");
         forwardInput = Input.GetAxis("Vertical");
 
-        DetectarSuelo();
+        inputMovimiento.Value =
+            new Vector2(horizontalInput, forwardInput);
 
+        correr.Value = Input.GetKey(KeyCode.LeftShift);
 
-        if (Input.GetButtonDown("Jump") && puedeSaltar)
-        {
-            saltoSolicitado = true;
-            puedeSaltar = false;
-        }
-
-        if (Input.GetKeyDown(KeyCode.LeftShift) && puedeSaltar)
-        {
-            speed = 7f;
-        }
-        speed = Input.GetKey(KeyCode.LeftShift)
-            ? velocidadCorrer
-            : 5f;
-
-
+        if (Input.GetButtonDown("Jump"))
+            SolicitarSaltoRpc();
     }
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
-        Vector3 moveDirection =
-            transform.forward * forwardInput +
-            transform.right * horizontalInput;
+        if (!IsServer || rb == null) return;
 
-        rb.linearVelocity = new Vector3(
-            moveDirection.x * speed,
-            rb.linearVelocity.y,
-            moveDirection.z * speed
+        rb.MoveRotation(
+            Quaternion.Euler(0f, rotacionSolicitada.Value, 0f)
         );
 
-        if (saltoSolicitado)
+        DetectarSuelo();
+
+        Vector2 entrada = inputMovimiento.Value;
+
+        Vector3 moveDirection =
+            transform.forward * entrada.y +
+            transform.right * entrada.x;
+
+        float velocidadActual =
+            correr.Value ? velocidadCorrer : speed;
+
+        rb.linearVelocity = new Vector3(
+            moveDirection.x * velocidadActual,
+            rb.linearVelocity.y,
+            moveDirection.z * velocidadActual
+        );
+
+        if (saltoSolicitado && puedeSaltar)
         {
             rb.linearVelocity = new Vector3(
                 rb.linearVelocity.x,
@@ -80,17 +128,31 @@ public class MovementPlayer : MonoBehaviour
                 rb.linearVelocity.z
             );
 
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            rb.AddForce(
+                Vector3.up * jumpForce,
+                ForceMode.Impulse
+            );
 
             saltoSolicitado = false;
+            puedeSaltar = false;
         }
     }
 
-    void DetectarSuelo()
+    [Rpc(SendTo.Server, RequireOwnership = true)]
+    private void SolicitarSaltoRpc()
+    {
+        if (puedeSaltar)
+            saltoSolicitado = true;
+    }
+
+    private void DetectarSuelo()
     {
         puedeSaltar = false;
 
-        Vector3 origen = groundCheck.position + Vector3.up * 0.1f;
+        if (groundCheck == null) return;
+
+        Vector3 origen =
+            groundCheck.position + Vector3.up * 0.1f;
 
         if (Physics.SphereCast(
             origen,
@@ -101,8 +163,6 @@ public class MovementPlayer : MonoBehaviour
             ~0,
             QueryTriggerInteraction.Ignore))
         {
-            
-
             Transform objeto = hit.collider.transform;
             bool esInteractuable = false;
 
@@ -118,25 +178,26 @@ public class MovementPlayer : MonoBehaviour
             }
 
             puedeSaltar = !esInteractuable;
-
         }
     }
-
-
-
-  
-
 
     private void OnDrawGizmosSelected()
     {
-
-        if(groundCheck != null)
+        if (groundCheck != null)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawSphere(groundCheck.position, groundDistance);
+            Gizmos.DrawSphere(
+                groundCheck.position,
+                groundDistance
+            );
         }
-
-
     }
 
+    public void AplicarGiro(float giro)
+    {
+        if (!IsOwner) return;
+
+        rotacionLocal += giro;
+        rotacionSolicitada.Value = rotacionLocal;
+    }
 }
